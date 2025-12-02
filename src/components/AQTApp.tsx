@@ -49,6 +49,7 @@ import {
     Pie,
     Cell,
 } from "recharts";
+import type { LucideIcon } from "lucide-react";
 
 /* ---------------- Types ---------------- */
 type Direction = "Long" | "Short";
@@ -60,7 +61,7 @@ type BrokerMap = Record<string, BrokerInfo>;
 type TradeSetup =
     | "Breakout" | "Pullback" | "Reversal" | "Range" | "Trend Following"
     | "SMC" | "ICT" | "The Strat" | "CRT" | "Wyckoff" | "Elliott Wave"
-    | "Supply & Demand" | "Support & Resistance" | "Harmonic"
+        | "Supply & Demand" | "Support & Resistance" | "Harmonic"
     | "News" | "Scalp" | "Algo/Bot" | "Fundamental";
 
 const TRADE_SETUPS: TradeSetup[] = [
@@ -737,7 +738,7 @@ const backupJSON = (state: any) => {
 
 const CollapsibleSection: React.FC<{
     title: string;
-    icon?: React.ComponentType<{ size?: number; className?: string }>;
+    icon?: LucideIcon;
     children: React.ReactNode;
     defaultOpen?: boolean;
 }> = ({ title, icon: Icon, children, defaultOpen = true }) => {
@@ -749,7 +750,7 @@ const CollapsibleSection: React.FC<{
                 className="w-full flex justify-between items-center p-4 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors focus:outline-none"
                 aria-label={`Toggle ${title}`}
             >
-                <div className="flex items-center gap-2 font-bold text-lg text-slate-800 dark:text-white">
+                <div className="flex items-center gap-2 font-bold text-lg">
                     {Icon && <Icon size={20} className="text-blue-600 dark:text-blue-400" />}
                     {title}
                 </div>
@@ -1283,11 +1284,11 @@ const App: React.FC = () => {
                     <PerformanceBenchmarks winRate={riskMetrics.winRate} profitFactor={riskMetrics.profitFactor} tradesCount={trades.length} />
                     <div className="bg-white dark:bg-white/5 rounded-xl p-4 border border-slate-200 dark:border-white/10 flex items-center justify-between">
                         <div>
-                            <div className="text-xs text-slate-500 uppercase font-bold">Total P&L</div>
+                            <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-2 block">Total P&L</div>
                             <div className={`text-xl font-bold ${totalPnL >= 0 ? "text-green-500" : "text-red-500"}`} aria-live="polite">{fmtUSD(totalPnL)}</div>
                         </div>
                         <div className="text-right">
-                            <div className="text-xs text-slate-500 uppercase font-bold">Account</div>
+                            <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-2 block">Account</div>
                             <div className="text-xl font-bold dark:text-white" aria-live="polite">{fmtUSD(balance)}</div>
                         </div>
                     </div>
@@ -1323,14 +1324,14 @@ const App: React.FC = () => {
                                         const nextLev = BROKERS[b]?.default ?? BROKERS[b]?.leverage?.[0] ?? leverage;
                                         setLeverage(nextLev);
                                     }}
-                                    className="w-full px-2 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/20 rounded-lg text-slate-900 dark:text-white text-sm"
+                                    className="w-full px-2 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white text-sm"
                                 >
                                     {Object.keys(BROKERS).map((b) => <option key={b} value={b}>{b}</option>)}
                                 </select>
                                 <select
                                     value={leverage}
                                     onChange={(e) => setLeverage(e.target.value)}
-                                    className="w-24 px-2 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/20 rounded-lg text-slate-900 dark:text-white text-sm"
+                                    className="w-24 px-2 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white text-sm"
                                 >
                                     {(BROKERS[broker]?.leverage ?? [leverage]).map((l) => <option key={l} value={l}>{l}</option>)}
                                 </select>
@@ -1346,7 +1347,7 @@ const App: React.FC = () => {
                         </div>
                         <div>
                             <label className="text-blue-700 dark:text-blue-200 text-xs font-bold uppercase tracking-wider mb-2 block">Tax (2025)</label>
-                            <select value={taxBracketIndex} onChange={(e) => setTaxBracketIndex(parseInt(e.target.value, 10))} className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/20 rounded-lg text-slate-900 dark:text-white text-sm">
+                            <select value={taxBracketIndex} onChange={(e) => setTaxBracketIndex(parseInt(e.target.value, 10))} className="w-full px-4 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white text-sm">
                                 {TAX_BRACKETS_2025.map((b, i) => <option key={i} value={i}>{b.label}</option>)}
                             </select>
                             <div className="mt-2 text-xs flex items-center gap-2">
@@ -1365,7 +1366,9 @@ const App: React.FC = () => {
                         <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><TrendingUp size={20} /> Tier Status</h3>
                         <div className="space-y-4 relative z-10">
                             <div className="flex justify-between border-b border-slate-200 dark:border-white/10 pb-2"><span className="text-blue-700 dark:text-blue-200">Current Tier</span><span className="font-bold text-green-600 dark:text-green-400 text-lg">{currentTier.name}</span></div>
-                            <div className="w-full bg-slate-200 dark:bg-black/30 h-3 rounded-full overflow-hidden"><div className="bg-gradient-to-r from-blue-400 to-green-400 h-full transition-all duration-1000" style={{ width: `${progress}%` }} /></div>
+                            <div className="w-full bg-slate-200 dark:bg-black/30 h-3 rounded-full overflow-hidden">
+                                <div className="bg-gradient-to-r from-blue-400 to-green-400 h-full transition-all duration-1000" style={{ width: `${progress}%` }} />
+                            </div>
                             <p className="text-xs text-slate-500 dark:text-blue-300 italic">
                                 {metrics.nextTier ? `${fmtUSD(Math.max(0, metrics.nextTier.min - balance))} to reach ${metrics.nextTier.name}` : currentTier.desc}
                             </p>
@@ -1432,7 +1435,7 @@ const App: React.FC = () => {
                         </div>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <div className="col-span-2 md:col-span-1"><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Pair</label><input type="text" placeholder="EURUSD" value={newTrade.pair} list={listId} onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })} onKeyDown={(e) => e.key === "Enter" && entryRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 uppercase text-lg font-bold dark:text-white" /><datalist id={listId}>{COMMON_PAIRS.map((p) => <option key={p} value={p} />)}</datalist></div>
+                        <div className="col-span-2 md:col-span-1"><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Pair</label><input type="text" placeholder="EURUSD" value={newTrade.pair} list={listId} onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })} onKeyDown={(e) => e.key === "Enter" && entryRef.current?.focus()} className="w-full pl-8 pr-4 py-2 bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg" /><datalist id={listId}>{COMMON_PAIRS.map((p) => <option key={p} value={p} />)}</datalist></div>
                         <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Dir</label><select value={newTrade.direction} onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as Direction })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white"><option value="Long">Long</option><option value="Short">Short</option></select></div>
                         <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Entry</label><input ref={entryRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.entry} onChange={(e) => setNewTrade({ ...newTrade, entry: e.target.value })} onKeyDown={(e) => e.key === "Enter" && exitRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
                         <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Exit</label><input ref={exitRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.exit} onChange={(e) => setNewTrade({ ...newTrade, exit: e.target.value })} onKeyDown={(e) => e.key === "Enter" && lotsRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
