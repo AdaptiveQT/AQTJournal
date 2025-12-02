@@ -1,0 +1,19 @@
+﻿# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+*.log
+.env*
+.env.*.local
+
+# Editors
+.vscode/
+.idea/
+
+# Visual Studio / Windows
+.vs/
+*.user
+*.suo
+*.svclog
+Thumbs.db
