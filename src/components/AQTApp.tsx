@@ -64,12 +64,8 @@ type TradeSetup =
         | "Supply & Demand" | "Support & Resistance" | "Harmonic"
     | "News" | "Scalp" | "Algo/Bot" | "Fundamental";
 
-const TRADE_SETUPS: TradeSetup[] = [
-    "Breakout", "Pullback", "Reversal", "Range", "Trend Following",
-    "SMC", "ICT", "The Strat", "CRT", "Wyckoff", "Elliott Wave",
-    "Supply & Demand", "Support & Resistance", "Harmonic",
-    "News", "Scalp", "Algo/Bot", "Fundamental"
-];
+
+
 
 type TradeInput = {
     pair: string;
@@ -116,6 +112,12 @@ type RiskMetrics = {
     bestStreak: number;
     worstStreak: number;
 };
+const TRADE_SETUPS: TradeSetup[] = [
+    "Breakout", "Pullback", "Reversal", "Range", "Trend Following",
+    "SMC", "ICT", "The Strat", "CRT", "Wyckoff", "Elliott Wave",
+    "Supply & Demand", "Support & Resistance", "Harmonic",
+    "News", "Scalp", "Algo/Bot", "Fundamental",
+];
 
 const TIERS: Tier[] = [
     { name: "SURVIVAL", min: 10, max: 19, pairs: 2, suggestedPairs: "EURUSD, GBPUSD", desc: "Capital preservation mode" },
@@ -1032,14 +1034,20 @@ const App: React.FC = () => {
 
     // Effective values for preview
     const pipValueForLotEffective = effectiveLots * globalSettings.pipValue;
+
     const previewPnL = useMemo(() => calculatePnL(newTrade, pipValueForLotEffective), [newTrade, pipValueForLotEffective]);
 
     // Margin with user override
     const marginRequiredEffective = useMemo(() => {
-        const levNum = Math.max(1, parseInt(leverage.replace("1:", "").replace("Unlimited", "2000"), 10) || 500);
-        const contractSize = getContractSize(pairMeta);
-        const proxyPrice = safeParseNumber(pairMeta.placeholder);
-        return balance > 0 && effectiveLots > 0 ? round2((effectiveLots * contractSize * proxyPrice) / levNum) : 0;
+      const levNum = Math.max(
+        1,
+        parseInt(leverage.replace("1:", "").replace("Unlimited", "2000"), 10) || 500
+      );
+      const contractSize = getContractSize(pairMeta);
+      const proxyPrice = safeParseNumber(pairMeta.placeholder);
+      return balance > 0 && effectiveLots > 0
+        ? round2((effectiveLots * contractSize * proxyPrice) / levNum)
+        : 0;
     }, [balance, effectiveLots, leverage, pairMeta]);
 
     // Effective Max Loss for R-multiple
@@ -1065,7 +1073,7 @@ const App: React.FC = () => {
     // Optimized Balance History (Avoid reverse allocs)
     const balanceHistory = useMemo(() => {
         const baseline = round2(balance - totalPnL);
-        const points = [{ trade: 0, balance: baseline }];
+        const points = [{ trade: 0, balance: baseline }];  // <-- no leading "1"
         // Iterate backwards
         for (let i = trades.length - 1; i >= 0; i--) {
             const prev = points[points.length - 1].balance;
@@ -1309,7 +1317,7 @@ const App: React.FC = () => {
                                     inputMode="decimal"
                                     value={balanceInput}
                                     onChange={(e) => setBalanceInput(e.target.value.replace(/[^\d.-]/g, ""))}
-                                    className="w-full pl-8 pr-4 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/20 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg"
+                                    className="w-full pl-8 pr-4 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg"
                                 />
                             </div>
                         </div>
