@@ -1,19 +1,26 @@
-﻿# Node / Next.js
+﻿# --- AQTJournal / Next.js ---
 node_modules/
 .next/
 out/
 dist/
-*.log
-.env*
-.env.*.local
-
-# Editors
+build/
+.vercel/
+# Firebase Data Connect generated stuff
+dataconnect/
+dataconnect-generated/
+src/dataconnect/
+# IDE & OS
+.vs/
 .vscode/
 .idea/
-
-# Visual Studio / Windows
-.vs/
-*.user
-*.suo
-*.svclog
+.DS_Store
 Thumbs.db
+# Env & local secrets
+.env
+.env.*
+.env.local
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
