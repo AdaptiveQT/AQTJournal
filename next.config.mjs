@@ -1,6 +1,7 @@
 ﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
-    reactStrictMode: true,
-    turbopack: { root: "." },
+    experimental: {
+        turbopack: { root: __dirname }, // make it absolute in Vercel
+    },
 };
 export default nextConfig;

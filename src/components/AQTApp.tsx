@@ -38,7 +38,7 @@ import {
   Cloud,
   CloudOff,
 } from "lucide-react";
-import type { LucideProps } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -782,8 +782,7 @@ const backupJSON = (state: any) => {
 
 const CollapsibleSection: React.FC<{
   title: string;
-  // Accept any Lucide icon (or similar) — fixes Vercel TS error
-  icon?: React.ComponentType<Omit<LucideProps, "ref">>;
+  icon?: LucideIcon;                 // <-- was React.ComponentType<{ size?: number; className?: string }>
   children: React.ReactNode;
   defaultOpen?: boolean;
 }> = ({ title, icon: Icon, children, defaultOpen = true }) => {
@@ -802,7 +801,7 @@ const CollapsibleSection: React.FC<{
         {isOpen ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
       </button>
       <div style={{ height: isOpen ? "auto" : 0, overflow: "hidden" }}>
-        <div className="p-6 border-t border-slate-200 dark:border-white/10">{children}</div>
+        <div className="p-6 border-top border-slate-200 dark:border-white/10">{children}</div>
       </div>
     </div>
   );
