@@ -1,3 +1,9 @@
+// AQTApp.tsx — patched for Vercel (lucide icon prop type fix) and inline Firebase.
+// - Uses permissive IconType (size?: string | number) for lucide icons
+// - No 'title' prop passed to lucide icons (avoids type error on Vercel)
+// - Firebase initialized from NEXT_PUBLIC_* env vars (works locally & on Vercel)
+// - Safe "Local Mode" if env vars are missing
+
 'use client';
 
 import React, {
@@ -38,7 +44,6 @@ import {
   Cloud,
   CloudOff,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -59,9 +64,6 @@ import {
   signInAnonymously,
   signInWithCustomToken,
   onAuthStateChanged,
-  GoogleAuthProvider,
-  signInWithPopup,
-  signOut,
   type User,
   type Auth,
 } from "firebase/auth";
@@ -780,9 +782,12 @@ const backupJSON = (state: any) => {
 
 /* ---------------- Collapsible / Modals / Drawers ---------------- */
 
+// very permissive icon type that works with lucide on Vercel
+type IconType = React.ComponentType<{ size?: string | number; className?: string }>;
+
 const CollapsibleSection: React.FC<{
   title: string;
-  icon?: LucideIcon;                 // <-- was React.ComponentType<{ size?: number; className?: string }>
+  icon?: IconType;
   children: React.ReactNode;
   defaultOpen?: boolean;
 }> = ({ title, icon: Icon, children, defaultOpen = true }) => {
@@ -801,7 +806,7 @@ const CollapsibleSection: React.FC<{
         {isOpen ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
       </button>
       <div style={{ height: isOpen ? "auto" : 0, overflow: "hidden" }}>
-        <div className="p-6 border-top border-slate-200 dark:border-white/10">{children}</div>
+        <div className="p-6 border-t border-slate-200 dark:border-white/10">{children}</div>
       </div>
     </div>
   );
@@ -1376,21 +1381,6 @@ const AQTApp: React.FC = () => {
     );
   }
 
-  // Google sign-in handlers (optional UI)
-  const handleGoogleSignIn = async () => {
-    if (!auth) return;
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      alert(`Google sign-in failed: ${err?.code || err?.message || err}`);
-    }
-  };
-  const handleSignOut = async () => {
-    if (!auth) return;
-    try { await signOut(auth); } catch (e) { /* ignore */ }
-  };
-
   return (
     <div className={`min-h-screen font-sans overflow-x-hidden pb-12 transition-colors duration-300 ${darkMode ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white" : "bg-slate-50 text-slate-800"}`}>
       <style>{`
@@ -1425,29 +1415,15 @@ const AQTApp: React.FC = () => {
             <p className="text-slate-600 dark:text-blue-300 text-sm">Adaptive Quantitative Trading System</p>
           </div>
           <div className="flex items-center gap-4 mt-4 md:mt-0 print:hidden">
-            {/* Sessions */}
             <div className="hidden md:flex gap-2">
               <span className={`px-2 py-1 text-xs rounded ${isTokyoOpen ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"}`} aria-label={`Tokyo session ${isTokyoOpen ? 'active' : 'inactive'}`}>Tokyo</span>
               <span className={`px-2 py-1 text-xs rounded ${isLondonOpen ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"}`} aria-label={`London session ${isLondonOpen ? 'active' : 'inactive'}`}>London</span>
               <span className={`px-2 py-1 text-xs rounded ${isNYOpen ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"}`} aria-label={`New York session ${isNYOpen ? 'active' : 'inactive'}`}>New York</span>
             </div>
-            {/* Clock */}
             <div className="text-right hidden sm:block">
               <div className="text-xs text-slate-500 dark:text-slate-400">System Time</div>
               <div className="font-mono text-xl">{currentTime.toLocaleTimeString()}</div>
             </div>
-
-            {/* Auth buttons */}
-            {!user ? (
-              <button onClick={handleGoogleSignIn} className="px-3 py-2 rounded bg-white text-slate-800 flex items-center gap-2 border border-slate-200">
-                <img alt="" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width={16} height={16} />
-                Sign in with Google
-              </button>
-            ) : (
-              <button onClick={handleSignOut} className="px-3 py-2 rounded bg-slate-700 text-white">Sign out</button>
-            )}
-
-            {/* Actions */}
             <button
               onClick={() => backupJSON({ version: "2.8-pro", timestamp: new Date().toISOString(), balance, trades, settings: { broker, leverage, safeMode, taxBracketIndex, isSection1256, darkMode, globalSettings } })}
               className="p-3 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50 transition-all"
@@ -1636,7 +1612,7 @@ const AQTApp: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="mt-4 p-3 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 flex justify-between items-center" aria-live="polite">
+          <div className="mt-4 p-3 bg-slate-50 dark:bg白/5 rounded-lg border border-slate-200 dark:border-white/10 flex justify-between items-center" aria-live="polite">
             <div className="text-xs text-slate-500">Live Preview (with {effectiveLots} lots):</div>
             <div className="flex items-center gap-4"><div className={`text-lg font-bold ${previewPnL >= 0 ? "text-green-500" : "text-red-500"}`} aria-live="polite">{previewPnL >= 0 ? "+" : ""}{fmtUSD(previewPnL)}</div><div className="text-xs px-2 py-1 bg-slate-200 dark:bg-white/10 rounded text-slate-600 dark:text-slate-300">{previewR >= 0 ? "+" : ""}{previewR.toFixed(2)}R</div></div>
           </div>
