@@ -758,6 +758,7 @@ const ClearAllTradesButton: React.FC<{ onClear: () => void }> = ({ onClear }) =>
 
 /* ---------------- Helpers: export/backup ---------------- */
 const exportToCSV = (trades: Trade[]) => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
   const headers = ["Date", "Time", "Pair", "Direction", "Lots", "PnL", "Setup", "Emotion", "Notes"];
   const rows = trades.map((t) => [t.date, t.time, t.pair, t.direction, t.lots, t.pnl.toFixed(2), t.setup, t.emotion, (t.notes || "").replace(/\n/g, " ")]);
   const csv = [headers.join(","), ...rows.map((r) => r.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))].join("\n");
@@ -771,6 +772,7 @@ const exportToCSV = (trades: Trade[]) => {
 };
 
 const backupJSON = (state: any) => {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -826,6 +828,7 @@ const TradingViewTicker: React.FC<{ darkMode: boolean }> = ({ darkMode }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState(false);
   useEffect(() => {
+    if (typeof document === "undefined") return;
     const c = containerRef.current;
     if (!c) return;
     c.innerHTML = "";
@@ -1096,7 +1099,11 @@ const AQTApp: React.FC = () => {
   }, [user, balance, broker, leverage, safeMode, taxBracketIndex, isSection1256, darkMode, globalSettings]);
 
   // Standard Effects
-  useEffect(() => { document.documentElement.classList.toggle("dark", darkMode); }, [darkMode]);
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", darkMode);
+    }
+  }, [darkMode]);
   useEffect(() => { const t = setInterval(() => setCurrentTime(new Date()), 1000); return () => clearInterval(t); }, []);
   useEffect(() => {
     const t = setTimeout(() => {
@@ -1243,7 +1250,7 @@ const AQTApp: React.FC = () => {
 
   const deleteTrade = useCallback(async (id: string) => {
     const trade = trades.find((t) => t.id === id);
-    if (trade && window.confirm("Delete trade? Balance will be reverted.")) {
+    if (trade && typeof window !== "undefined" && window.confirm("Delete trade? Balance will be reverted.")) {
       const newBalance = round2(balance - trade.pnl);
       setBalance(newBalance);
       setBalanceInput(String(newBalance));
@@ -1270,7 +1277,9 @@ const AQTApp: React.FC = () => {
       emotion: trade.emotion || "Calm",
       notes: "",
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
   }, []);
 
   const saveNotes = useCallback(async (id: string, notes: string) => {
@@ -1286,7 +1295,11 @@ const AQTApp: React.FC = () => {
   }, [user]);
 
   const applyTemplate = useCallback((name: string) => { const t = TRADE_TEMPLATES.find((temp) => temp.name === name); if (t) setNewTrade((p) => ({ ...p, pair: t.pair, setup: t.setup })); }, []);
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
 
   const onRestore = (file: File) => {
     const reader = new FileReader();
@@ -1296,7 +1309,7 @@ const AQTApp: React.FC = () => {
         if (!data || typeof data !== "object") throw new Error("Invalid");
 
         if (trades.length > 0) {
-          const ok = window.confirm("This will overwrite current data. Continue?");
+          const ok = typeof window !== "undefined" && window.confirm("This will overwrite current data. Continue?");
           if (!ok) return;
         }
 
@@ -1683,7 +1696,11 @@ const AQTApp: React.FC = () => {
                         <button
                           onClick={() => {
                             setNewTrade({ ...initialTradeState, pair: "EURUSD", entry: "1.0500", exit: "1.0550", lots: "1.00" });
-                            setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
+                            setTimeout(() => {
+                              if (typeof window !== "undefined") {
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }
+                            }, 100);
                           }}
                           className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 transition-colors"
                         >
