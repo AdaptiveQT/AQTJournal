@@ -43,6 +43,7 @@ import {
   Wallet,
   Cloud,
   CloudOff,
+  Twitter
 } from "lucide-react";
 import {
   LineChart,
@@ -64,8 +65,13 @@ import {
   signInAnonymously,
   signInWithCustomToken,
   onAuthStateChanged,
+  signOut,
   type User,
   type Auth,
+  GoogleAuthProvider,
+  TwitterAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -1106,6 +1112,10 @@ const AQTApp: React.FC = () => {
   const lotsRef = useRef<HTMLInputElement>(null);
   const listId = useId();
 
+  // Auth providers
+  const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
+  const twitterProvider = useMemo(() => new TwitterAuthProvider(), []);
+
   // --- Auth & Data Effects (only if Firebase is ready) ---
   useEffect(() => {
     if (!firebaseReady || !auth) {
@@ -1311,6 +1321,58 @@ const AQTApp: React.FC = () => {
   const estimatedTax = Math.max(0, totalPnL) * taxRate;
   const netPocket = totalPnL - estimatedTax;
 
+  // --- Auth actions (Google + Twitter + Sign out) ---
+  const signInWithGoogle = async () => {
+    if (!auth) {
+      if (typeof window !== "undefined") {
+        alert("Firebase not ready. Check your .env and Firebase initialization.");
+      }
+      return;
+    }
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err: any) {
+      if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        if (typeof window !== "undefined") {
+          alert(`Google sign-in failed: ${err?.code || err?.message || err}`);
+        }
+      }
+    }
+  };
+
+  const signInWithTwitter = async () => {
+    if (!auth) {
+      if (typeof window !== "undefined") {
+        alert("Firebase not ready. Check your .env & Firebase initialization.");
+      }
+      return;
+    }
+    try {
+      await signInWithPopup(auth, twitterProvider);
+    } catch (err: any) {
+      if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
+        await signInWithRedirect(auth, twitterProvider);
+      } else {
+        if (typeof window !== "undefined") {
+          alert(`Twitter sign-in failed: ${err?.code || err?.message || err}`);
+        }
+      }
+    }
+  };
+
+  const signOutAll = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+    } catch (e: any) {
+      if (typeof window !== "undefined") {
+        alert(`Sign out error: ${e?.code || e?.message || e}`);
+      }
+    }
+  };
+
   // --- Actions ---
   const addTrade = useCallback(async () => {
     if (!isFormValid) return;
@@ -1499,20 +1561,50 @@ const AQTApp: React.FC = () => {
       <div className="max-w-7xl mx-auto space-y-4 p-4" id="dashboard">
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-center py-2">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-              AQT <span className="text-blue-600 dark:text-blue-400">v2.8 Pro</span>
-              {user ? (
-                <span className="inline-flex" aria-label="Synced to Cloud">
-                  <Cloud size={16} className="text-green-500" />
-                </span>
-              ) : (
-                <span className="inline-flex" aria-label="Local Mode">
-                  <CloudOff size={16} className="text-slate-400" />
-                </span>
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+                AQT <span className="text-blue-600 dark:text-blue-400">v2.8 Pro</span>
+                {user ? (
+                  <span className="inline-flex" aria-label="Synced to Cloud">
+                    <Cloud size={16} className="text-green-500" />
+                  </span>
+                ) : (
+                  <span className="inline-flex" aria-label="Local Mode">
+                    <CloudOff size={16} className="text-slate-400" />
+                  </span>
+                )}
+              </h1>
+              <p className="text-slate-600 dark:text-blue-300 text-sm">Adaptive Quantitative Trading System</p>
+            </div>
+
+            {/* Sign-in buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={signInWithGoogle}
+                className="px-3 py-1.5 rounded bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm"
+                aria-label="Sign in with Google"
+              >
+                Sign in with Google
+              </button>
+              <button
+                onClick={signInWithTwitter}
+                className="px-3 py-1.5 rounded bg-slate-800 text-white hover:bg-slate-700 flex items-center gap-2 text-sm border border-white/10"
+                aria-label="Sign in with X (Twitter)"
+              >
+                <Twitter size={16} />
+                Sign in with X
+              </button>
+              {user && (
+                <button
+                  onClick={signOutAll}
+                  className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-500 text-sm"
+                  aria-label="Sign out"
+                >
+                  Sign out
+                </button>
               )}
-            </h1>
-            <p className="text-slate-600 dark:text-blue-300 text-sm">Adaptive Quantitative Trading System</p>
+            </div>
           </div>
           <div className="flex items-center gap-4 mt-4 md:mt-0 print:hidden">
             <div className="hidden md:flex gap-2">
