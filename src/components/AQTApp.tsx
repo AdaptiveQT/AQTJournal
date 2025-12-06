@@ -117,7 +117,17 @@ try {
 type Direction = "Long" | "Short";
 type Tier = { name: string; min: number; max: number; pairs: number; suggestedPairs: string; desc: string };
 type TaxBracket = { rate: number; label: string; minIncome: number };
-type BrokerInfo = { minLot: number; leverage: string[]; default: string; regulation?: string };
+type PricingModel = { label: string; commission: boolean; note?: string };
+type BrokerInfo = {
+  minLot: number;
+  leverage: string[];
+  default: string;
+  regulation?: string;
+  /** Estimated breakeven buffer in pips for spread+commission ECN/Raw style accounts */
+  beBufferPips?: number;
+  /** Optional list of account-type pricing models for display */
+  models?: PricingModel[];
+};
 type BrokerMap = Record<string, BrokerInfo>;
 
 type TradeSetup =
@@ -229,6 +239,69 @@ const BROKERS: BrokerMap = {
   "Ally Invest": { minLot: 0.01, leverage: ["1:20", "1:30", "1:50"], default: "1:50", regulation: "US Regulated (Max 1:50)" },
   "ATC Brokers": { minLot: 0.01, leverage: ["1:20", "1:30", "1:50"], default: "1:50", regulation: "US Regulated (Max 1:50)" },
 };
+
+/** Heuristic/placeholder BE buffers in pips (spread+commission) */
+const BROKER_BE_BUFFER: Record<string, number> = {
+  "Coinexx": 0.5,
+  "HankoTrade": 0.5,
+  "Hugo's Way": 0.5,
+  "PlexyTrade": 0.5,
+  "Fyntura": 0.5,
+  "DuraMarkets": 0.5,
+  // Regulated US desks typically spread-only or lower fixed costs; default to 0
+  // Override per your experience.
+};
+
+/** Display-only list of common commission vs spread-only models */
+const BROKER_MODELS: { name: string; models: PricingModel[] }[] = [
+  { name: "OANDA", models: [
+    { label: "Core", commission: true, note: "Spread + commission" },
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+  { name: "FOREX.com", models: [
+    { label: "RAW", commission: true, note: "Spread + commission" },
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+  { name: "Pepperstone", models: [
+    { label: "Razor", commission: true, note: "Spread + commission" },
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+  { name: "IC Markets", models: [
+    { label: "Raw/ECN", commission: true, note: "Spread + commission" },
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+  { name: "XM", models: [
+    { label: "Zero", commission: true, note: "Spread + commission" },
+    { label: "Standard/Micro", commission: false, note: "Spread-only" },
+  ]},
+  { name: "Exness", models: [
+    { label: "Raw/Zero", commission: true, note: "Spread + commission" },
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+  { name: "BlackBull Markets", models: [
+    { label: "ECN", commission: true, note: "Spread + commission" },
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+  { name: "Eightcap", models: [
+    { label: "Raw", commission: true, note: "Spread + commission" },
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+  { name: "HankoTrade", models: [
+    { label: "ECN", commission: true, note: "Spread + commission" },
+  ]},
+  { name: "Coinexx", models: [
+    { label: "ECN", commission: true, note: "Spread + commission" },
+  ]},
+  { name: "IG US", models: [
+    { label: "Standard", commission: false, note: "Spread-only (CFDs/FX)" },
+  ]},
+  { name: "AvaTrade", models: [
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+  { name: "eToro", models: [
+    { label: "Standard", commission: false, note: "Spread-only" },
+  ]},
+];
 
 const COMMON_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "USDCAD", "BTCUSD", "ETHUSD", "US30", "NAS100", "SPX500"];
 const isBrowser = typeof window !== "undefined";
@@ -342,13 +415,21 @@ const calculateTradingMetrics = (
   return { currentTier, lotSize, dailyGoal, maxLoss, targetWin, riskRewardRatio, nextTier, progress, pipValueForLot };
 };
 
-const calculatePnL = (trade: { entry: string | number; exit: string | number; pair: string; direction: Direction }, pipValueForLot: number) => {
+const calculatePnL = (
+  trade: { entry: string | number; exit: string | number; pair: string; direction: Direction },
+  pipValueForLot: number,
+  beBufferPips = 0
+) => {
   const entryNum = safeParseNumber(trade.entry);
   const exitNum = safeParseNumber(trade.exit);
   if (!entryNum || !exitNum || entryNum === exitNum) return 0;
+
   const meta = getPairMetadata(trade.pair);
   const dirMult = trade.direction === "Long" ? 1 : -1;
-  return round2((exitNum - entryNum) * dirMult * meta.multiplier * pipValueForLot);
+
+  const grossDollars = (exitNum - entryNum) * dirMult * meta.multiplier * pipValueForLot;
+  const costDollars = beBufferPips * pipValueForLot; // spread+commission expressed in pips
+  return round2(grossDollars - costDollars);
 };
 
 const validateTradeInputs = (trade: TradeInput, minLot: number) => {
@@ -1145,6 +1226,8 @@ const AQTApp: React.FC = () => {
   );
   const { currentTier, lotSize, dailyGoal, maxLoss, targetWin, riskRewardRatio, progress, pipValueForLot } = metrics;
 
+  const beBufferPips = BROKER_BE_BUFFER[broker] ?? 0;
+
   const effectiveLots = useMemo(() => {
     const raw = safeParseNumber(newTrade.lots);
     if (newTrade.lots && raw >= brokerMinLot) {
@@ -1155,7 +1238,10 @@ const AQTApp: React.FC = () => {
   }, [newTrade.lots, brokerMinLot, lotSize]);
 
   const pipValueForLotEffective = effectiveLots * globalSettings.pipValue;
-  const previewPnL = useMemo(() => calculatePnL(newTrade, pipValueForLotEffective), [newTrade, pipValueForLotEffective]);
+  const previewPnL = useMemo(
+    () => calculatePnL(newTrade, pipValueForLotEffective, BROKER_BE_BUFFER[broker] ?? 0),
+    [newTrade, pipValueForLotEffective, broker]
+  );
 
   const marginRequiredEffective = useMemo(() => {
     const levNum = Math.max(1, parseInt(leverage.replace("1:", "").replace("Unlimited", "2000"), 10) || 500);
@@ -1228,7 +1314,8 @@ const AQTApp: React.FC = () => {
   // --- Actions ---
   const addTrade = useCallback(async () => {
     if (!isFormValid) return;
-    const pnlValue = calculatePnL(newTrade, pipValueForLotEffective);
+    const beBuf = BROKER_BE_BUFFER[broker] ?? 0;
+    const pnlValue = calculatePnL(newTrade, pipValueForLotEffective, beBuf);
     const normalized = normalizeTrade(newTrade, effectiveLots);
     const finalTrade = { ...normalized, pnl: pnlValue };
 
@@ -1246,7 +1333,7 @@ const AQTApp: React.FC = () => {
       }
     }
     setNewTrade(initialTradeState);
-  }, [isFormValid, user, newTrade, pipValueForLotEffective, effectiveLots, balance, initialTradeState]);
+  }, [isFormValid, user, newTrade, pipValueForLotEffective, effectiveLots, balance, initialTradeState, broker]);
 
   const deleteTrade = useCallback(async (id: string) => {
     const trade = trades.find((t) => t.id === id);
@@ -1564,6 +1651,7 @@ const AQTApp: React.FC = () => {
               <div className="flex justify-between"><span className="text-slate-700 dark:text-white">Est. R:R</span><span className="font-mono text-blue-600 dark:text-blue-200">1:{riskRewardRatio}</span></div>
               <div className="flex justify-between"><span className="text-slate-700 dark:text-white">Margin ({(newTrade.pair || "EURUSD").toUpperCase()})</span><span className="font-mono text-blue-600 dark:text-blue-200">{fmtUSD(marginRequiredEffective)}</span></div>
               <div className="flex justify-between pt-1"><span className="text-slate-700 dark:text-white">Lots In Use</span><span className="font-mono text-slate-900 dark:text-white font-bold">{effectiveLots}</span></div>
+              <div className="flex justify-between"><span className="text-slate-700 dark:text-white">BE Buffer</span><span className="font-mono text-slate-900 dark:text-white">{beBufferPips} pips</span></div>
               <RiskOfRuinCalculator winRate={riskMetrics.winRate} riskPerTradePct={balance > 0 ? Math.max(0.01, (maxLossEffective / balance) * 100) : 0} />
             </div>
           </div>
@@ -1594,6 +1682,48 @@ const AQTApp: React.FC = () => {
             </div>
           </CollapsibleSection>
         )}
+
+        {/* BROKER COMMISSION MODELS */}
+        <CollapsibleSection title="Broker Commission Models" icon={Calculator} defaultOpen={false}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-300">
+                  <th className="py-2 pr-3 text-left">Broker</th>
+                  <th className="py-2 pr-3 text-left">Model</th>
+                  <th className="py-2 pr-3 text-left">Pricing</th>
+                  <th className="py-2 pr-3 text-left">Note</th>
+                </tr>
+              </thead>
+              <tbody>
+                {BROKER_MODELS.map((b) =>
+                  b.models.map((m, i) => (
+                    <tr key={`${b.name}-${m.label}`} className="border-b border-slate-100 dark:border-white/5">
+                      {i === 0 && (
+                        <td rowSpan={b.models.length} className="py-3 pr-3 font-bold align-top text-slate-800 dark:text-white">
+                          {b.name}
+                        </td>
+                      )}
+                      <td className="py-3 pr-3 text-slate-700 dark:text-slate-300">{m.label}</td>
+                      <td className="py-3 pr-3">
+                        <span className={`px-2 py-1 rounded text-xs font-bold border
+                          ${m.commission
+                            ? "bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800"
+                            : "bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"}`}>
+                          {m.commission ? "Spread + Commission" : "Spread-Only"}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-3 text-slate-500 dark:text-slate-400">{m.note}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+              Note: labels & fees vary by <em>account type</em> and <em>region</em>. Use your broker's official specs for exact numbers.
+            </div>
+          </div>
+        </CollapsibleSection>
 
         {/* ENTRY */}
         <CollapsibleSection title="Trade Entry" icon={DollarSign} defaultOpen={true}>
@@ -1629,6 +1759,12 @@ const AQTApp: React.FC = () => {
             <div className="text-xs text-slate-500">Live Preview (with {effectiveLots} lots):</div>
             <div className="flex items-center gap-4"><div className={`text-lg font-bold ${previewPnL >= 0 ? "text-green-500" : "text-red-500"}`} aria-live="polite">{previewPnL >= 0 ? "+" : ""}{fmtUSD(previewPnL)}</div><div className="text-xs px-2 py-1 bg-slate-200 dark:bg-white/10 rounded text-slate-600 dark:text-slate-300">{previewR >= 0 ? "+" : ""}{previewR.toFixed(2)}R</div></div>
           </div>
+          {beBufferPips > 0 && (
+            <div className="mt-2 text-[11px] rounded bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 px-2 py-1 flex items-center gap-2">
+              <AlertTriangle size={14} />
+              Reality Check: on {broker}, a "breakeven" stop is a net loss. You need ~+{beBufferPips} pips to cover spread + commission.
+            </div>
+          )}
           {validationErrors.length > 0 && (<ul className="mt-3 text-sm text-red-600 list-disc list-inside">{validationErrors.map((e, i) => <li key={i}>{e}</li>)}</ul>)}
           <div className="mt-4 flex gap-3"><button type="button" onClick={addTrade} disabled={!isFormValid} className={`flex-1 font-bold py-3 rounded-lg text-lg shadow-xl ${isFormValid ? "bg-blue-600 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"}`}>{isFormValid ? "Log Trade" : "Enter Details"}</button><button type="button" onClick={() => setNewTrade(initialTradeState)} className="px-4 py-3 rounded-lg bg-slate-200 dark:bg-slate-800">Reset</button></div>
         </CollapsibleSection>
