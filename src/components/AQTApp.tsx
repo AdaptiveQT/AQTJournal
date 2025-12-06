@@ -1333,7 +1333,14 @@ const AQTApp: React.FC = () => {
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
       if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
-        await signInWithRedirect(auth, googleProvider);
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (redirectErr: any) {
+          if (typeof window !== "undefined") {
+            alert(`Google sign-in failed: ${redirectErr?.code || redirectErr?.message || redirectErr}`);
+          }
+          console.error("Redirect sign-in error:", redirectErr);
+        }
       } else {
         if (typeof window !== "undefined") {
           alert(`Google sign-in failed: ${err?.code || err?.message || err}`);
@@ -1353,7 +1360,14 @@ const AQTApp: React.FC = () => {
       await signInWithPopup(auth, twitterProvider);
     } catch (err: any) {
       if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
-        await signInWithRedirect(auth, twitterProvider);
+        try {
+          await signInWithRedirect(auth, twitterProvider);
+        } catch (redirectErr: any) {
+          if (typeof window !== "undefined") {
+            alert(`Twitter sign-in failed: ${redirectErr?.code || redirectErr?.message || redirectErr}`);
+          }
+          console.error("Redirect sign-in error:", redirectErr);
+        }
       } else {
         if (typeof window !== "undefined") {
           alert(`Twitter sign-in failed: ${err?.code || err?.message || err}`);
