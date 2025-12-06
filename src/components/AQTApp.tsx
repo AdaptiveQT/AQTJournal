@@ -1612,7 +1612,7 @@ const AQTApp: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="mt-4 p-3 bg-slate-50 dark:bg白/5 rounded-lg border border-slate-200 dark:border-white/10 flex justify-between items-center" aria-live="polite">
+          <div className="mt-4 p-3 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 flex justify-between items-center" aria-live="polite">
             <div className="text-xs text-slate-500">Live Preview (with {effectiveLots} lots):</div>
             <div className="flex items-center gap-4"><div className={`text-lg font-bold ${previewPnL >= 0 ? "text-green-500" : "text-red-500"}`} aria-live="polite">{previewPnL >= 0 ? "+" : ""}{fmtUSD(previewPnL)}</div><div className="text-xs px-2 py-1 bg-slate-200 dark:bg-white/10 rounded text-slate-600 dark:text-slate-300">{previewR >= 0 ? "+" : ""}{previewR.toFixed(2)}R</div></div>
           </div>
