@@ -15,7 +15,16 @@ import {
 
 // --- FIREBASE IMPORTS ---
 import { auth, db } from '../firebase';
-import { signInAnonymously, onAuthStateChanged, type User } from 'firebase/auth';
+import {
+  signInAnonymously,
+  onAuthStateChanged,
+  type User,
+  GoogleAuthProvider,
+  TwitterAuthProvider,
+  signInWithPopup,
+  linkWithPopup,
+  signOut,
+} from 'firebase/auth';
 import {
   doc, setDoc, updateDoc, onSnapshot, collection,
   addDoc, deleteDoc, serverTimestamp, query, orderBy, type DocumentData
@@ -27,9 +36,11 @@ import {
 
 interface LandingPageProps {
   onEnterApp: () => void;
+  onGoogle: () => void;
+  onTwitter: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onGoogle, onTwitter }) => {
   const [activeTab, setActiveTab] = useState<'landing' | 'pricing' | 'testimonials' | 'features' | 'onboarding'>('landing');
 
   return (
@@ -88,6 +99,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp }) => {
                 >
                   <Zap className="w-5 h-5" />
                   Start Free Trial
+                </button>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center pt-2">
+                <button
+                  onClick={onGoogle}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm"
+                >
+                  Continue with Google
+                </button>
+                <button
+                  onClick={onTwitter}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm"
+                >
+                  Continue with Twitter
                 </button>
               </div>
               <div className="text-sm text-blue-300/60 mt-4">No credit card required • Instant access</div>
@@ -467,6 +492,46 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // --- Auth Helpers: Google / Twitter sign-in (with anonymous upgrade) ---
+  const signInWithProvider = async (which: 'google' | 'twitter') => {
+    if (!auth) return;
+    const provider =
+      which === 'google' ? new GoogleAuthProvider() : new TwitterAuthProvider();
+
+    try {
+      if (auth.currentUser && auth.currentUser.isAnonymous) {
+        // Upgrade the anonymous user (keep data/UID)
+        await linkWithPopup(auth.currentUser, provider);
+      } else {
+        await signInWithPopup(auth, provider);
+      }
+    } catch (e: any) {
+      // Common case: account exists with a different provider
+      if (e?.code === 'auth/account-exists-with-different-credential') {
+        if (typeof window !== 'undefined') {
+          alert(
+            'An account already exists with a different sign-in method for this email. ' +
+            'Please sign in with your original provider and then link the new one from your profile.'
+          );
+        }
+      } else {
+        console.error('Sign-in error:', e);
+        if (typeof window !== 'undefined') alert('Sign-in failed. Check console for details.');
+      }
+    }
+  };
+
+  const logout = async () => {
+    if (!auth) return;
+    try {
+      await signOut(auth);
+      // Fall back to anonymous so the app continues to work
+      await signInAnonymously(auth);
+    } catch (e) {
+      console.error('Logout failed:', e);
+    }
+  };
+
   // Derived metrics (memoized)
   const metrics = useMemo(() => {
     const currentTier = TIERS.find(t => balance >= t.min && balance <= t.max) || TIERS[0];
@@ -621,11 +686,62 @@ Win Rate: ${trades.length > 0 ? ((trades.filter(t => (t.pnl || 0) > 0).length / 
         </div>
         <div className="flex items-center gap-3">
           {!isPremium && (
-            <button onClick={() => setShowPaywall(true)} className="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full animate-pulse">
+            <button
+              onClick={() => setShowPaywall(true)}
+              className="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full animate-pulse"
+            >
               Upgrade
             </button>
           )}
-          <button onClick={() => updateSetting('darkMode', !darkMode)} className="p-2 rounded-full bg-white/10">
+
+          {/* Auth controls */}
+          {user && !user.isAnonymous ? (
+            <div className="flex items-center gap-2">
+              {user.photoURL ? (
+                <img
+                  src={user.photoURL}
+                  alt={user.displayName || 'User'}
+                  className="h-7 w-7 rounded-full border border-white/20"
+                />
+              ) : (
+                <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center text-xs">
+                  {user.displayName?.[0]?.toUpperCase() || 'U'}
+                </div>
+              )}
+              <span className="hidden sm:block text-xs opacity-80 max-w-[140px] truncate">
+                {user.displayName || user.email || 'Signed in'}
+              </span>
+              <button
+                onClick={logout}
+                className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
+                title="Sign out"
+              >
+                Log out
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => signInWithProvider('google')}
+                className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
+                title="Continue with Google"
+              >
+                Google
+              </button>
+              <button
+                onClick={() => signInWithProvider('twitter')}
+                className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
+                title="Continue with Twitter"
+              >
+                Twitter
+              </button>
+            </div>
+          )}
+
+          <button
+            onClick={() => updateSetting('darkMode', !darkMode)}
+            className="p-2 rounded-full bg-white/10"
+          >
             {darkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
