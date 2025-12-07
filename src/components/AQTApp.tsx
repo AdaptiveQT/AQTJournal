@@ -2193,7 +2193,7 @@ const AQTApp: React.FC = () => {
         <StreakTracker
           currentStreak={riskMetrics.currentStreak}
           longestStreak={riskMetrics.bestStreak}
-          lastProfitableDay={sortedTrades.find(t => t.pnl > 0)?.date || null}
+          lastProfitableDay={trades.find(t => t.pnl > 0)?.date || null}
         />
 
         {/* GOALS & BENCHMARKS */}
