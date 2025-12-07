@@ -573,15 +573,15 @@ const WithdrawalAlert: React.FC<{ balance: number }> = ({ balance }) => {
 
 const PerformanceSummary: React.FC<{ metrics: RiskMetrics }> = ({ metrics }) => (
   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10">
+    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
       <div className="text-sm text-slate-500 dark:text-slate-400">Win Rate</div>
-      <div className="text-2xl font-bold dark:text-white">{metrics.winRate.toFixed(1)}%</div>
+      <div className="text-2xl font-bold text-slate-900 dark:text-white">{metrics.winRate.toFixed(1)}%</div>
     </div>
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10">
+    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
       <div className="text-sm text-slate-500 dark:text-slate-400">Profit Factor</div>
-      <div className="text-2xl font-bold dark:text-white">{Number.isFinite(metrics.profitFactor) ? metrics.profitFactor.toFixed(2) : "∞"}</div>
+      <div className="text-2xl font-bold text-slate-900 dark:text-white">{Number.isFinite(metrics.profitFactor) ? metrics.profitFactor.toFixed(2) : "∞"}</div>
     </div>
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10">
+    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
       <div className="text-sm text-slate-500 dark:text-slate-400">Streak (Cur/Best)</div>
       <div className="text-2xl font-bold flex items-baseline gap-2">
         <span className={metrics.currentStreak > 0 ? "text-green-500" : metrics.currentStreak < 0 ? "text-red-500" : "text-slate-500"}>
@@ -590,11 +590,11 @@ const PerformanceSummary: React.FC<{ metrics: RiskMetrics }> = ({ metrics }) => 
         <span className="text-sm text-slate-400 font-normal dark:text-slate-300">/ +{metrics.bestStreak}</span>
       </div>
     </div>
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10">
+    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
       <div className="text-sm text-slate-500 dark:text-slate-400">Best Trade</div>
       <div className="text-2xl font-bold text-green-500">{fmtUSD(metrics.largestWin)}</div>
     </div>
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10">
+    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
       <div className="text-sm text-slate-500 dark:text-slate-400">Worst Trade</div>
       <div className="text-2xl font-bold text-red-500">{fmtUSD(metrics.largestLoss)}</div>
     </div>
