@@ -1247,8 +1247,8 @@ const FlipMode: React.FC<{
               onClick={() => setShowRulesCheck(false)}
               disabled={!allRulesChecked}
               className={`w-full py-3 rounded-lg font-bold transition-colors ${allRulesChecked
-                  ? 'bg-green-600 hover:bg-green-500'
-                  : 'bg-slate-600 cursor-not-allowed'
+                ? 'bg-green-600 hover:bg-green-500'
+                : 'bg-slate-600 cursor-not-allowed'
                 }`}
             >
               {allRulesChecked ? "Let's Trade! 🚀" : 'Check All Rules First'}
@@ -2072,7 +2072,7 @@ const AQTApp: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen font-sans overflow-x-hidden pb-12 transition-colors duration-300 ${darkMode ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white" : "bg-slate-50 text-slate-800"}`}>
+    <div className={`min-h-screen font-sans overflow-x-hidden pb-12 transition-colors duration-300 ${darkMode ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white" : "bg-white text-slate-800"}`}>
       <style>{`
         @media print {
           body { background: white !important; color: black !important; }
@@ -2110,14 +2110,14 @@ const AQTApp: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={signInWithGoogle}
-                className="px-3 py-1.5 rounded bg-white/10 border border-white/20 hover:bg-white/20 text-white text-sm"
+                className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 dark:bg-white/10 border dark:border-white/20 dark:hover:bg-white/20 text-white text-sm transition-colors"
                 aria-label="Sign in with Google"
               >
                 Sign in with Google
               </button>
               <button
                 onClick={signInWithTwitter}
-                className="px-3 py-1.5 rounded bg-slate-800 text-white hover:bg-slate-700 flex items-center gap-2 text-sm border border-white/10"
+                className="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 dark:bg-slate-800 text-white dark:hover:bg-slate-700 flex items-center gap-2 text-sm border border-slate-600 dark:border-white/10 transition-colors"
                 aria-label="Sign in with X (Twitter)"
               >
                 <Twitter size={16} />
