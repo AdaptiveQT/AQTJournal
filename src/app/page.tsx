@@ -1,7 +1,7 @@
 // src/app/page.tsx
-import AQTAppV3 from "@/components/AQTAppV3";
+import AQTApp from "@/components/AQTApp";
 
 export default function Page() {
-    return <AQTAppV3 />;
+    return <AQTApp />;
 }
 
