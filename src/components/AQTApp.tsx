@@ -64,6 +64,12 @@ import {
   Cell,
 } from "recharts";
 
+// Component imports for integration
+import HelpGuide from "./HelpGuide";
+import RiskRewardCalculator from "./RiskRewardCalculator";
+import WeeklyGoals from "./WeeklyGoals";
+import StreakTracker from "./StreakTracker";
+
 /* ---------------- Firebase (inlined) ---------------- */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import {
@@ -1573,6 +1579,12 @@ const AQTApp: React.FC = () => {
   });
   const [isFlipMode, setIsFlipMode] = useState(false);
 
+  // Component Integration State
+  const [showHelp, setShowHelp] = useState(false);
+  const [showRRCalculator, setShowRRCalculator] = useState(false);
+  const [weeklyGoal, setWeeklyGoal] = useState(200);
+  const [monthlyGoal, setMonthlyGoal] = useState(800);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [filters, setFilters] = useState<{ pair: string; direction: "" | Direction; minPnl: string; maxPnl: string }>({ pair: "", direction: "", minPnl: "", maxPnl: "" });
   const [notesModalTradeId, setNotesModalTradeId] = useState<string | null>(null);
@@ -2163,6 +2175,8 @@ const AQTApp: React.FC = () => {
               <Zap size={16} />
               Flip Mode
             </button>
+            <button onClick={() => setShowHelp(true)} className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800 transition-all" aria-label="Help Guide"><HelpCircle size={20} /></button>
+            <button onClick={() => setShowRRCalculator(true)} className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all" aria-label="Risk/Reward Calculator"><Calculator size={20} /></button>
             <button onClick={() => setIsSettingsOpen(true)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><SettingsIcon size={20} className="text-slate-700 dark:text-slate-300" /></button>
             <button onClick={() => setDarkMode(!darkMode)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><Sun size={20} className="text-slate-700 dark:text-slate-300" /></button>
             <button onClick={handlePrint} className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-all"><Printer size={20} /></button>
@@ -2174,6 +2188,9 @@ const AQTApp: React.FC = () => {
 
         {/* SUMMARY */}
         <PerformanceSummary metrics={riskMetrics} />
+
+        {/* STREAK TRACKER */}
+        <StreakTracker trades={trades} />
 
         {/* GOALS & BENCHMARKS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -2193,6 +2210,15 @@ const AQTApp: React.FC = () => {
 
         {/* MILESTONES */}
         <PerformanceMilestones trades={trades} balance={balance} />
+
+        {/* WEEKLY & MONTHLY GOALS */}
+        <WeeklyGoals
+          trades={trades}
+          weeklyGoal={weeklyGoal}
+          monthlyGoal={monthlyGoal}
+          onUpdateWeeklyGoal={setWeeklyGoal}
+          onUpdateMonthlyGoal={setMonthlyGoal}
+        />
 
         {/* CONFIGURATION */}
         <CollapsibleSection title="Configuration" icon={Shield}>
@@ -2519,6 +2545,25 @@ const AQTApp: React.FC = () => {
 
       <TradeNotesModal trade={notesTrade} isOpen={!!notesModalTradeId} onClose={() => setNotesModalTradeId(null)} onSave={saveNotes} />
       <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={globalSettings} onSave={(s) => setGlobalSettings((prev) => ({ ...prev, ...s }))} />
+
+      {/* Help Guide Modal */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowHelp(false)}>
+          <div className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <HelpGuide onClose={() => setShowHelp(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Risk/Reward Calculator Modal */}
+      {showRRCalculator && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowRRCalculator(false)}>
+          <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <RiskRewardCalculator onClose={() => setShowRRCalculator(false)} />
+          </div>
+        </div>
+      )}
+
       <HelpTooltip />
       <QRCodeGenerator />
     </div>
