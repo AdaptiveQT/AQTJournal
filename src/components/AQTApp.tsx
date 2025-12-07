@@ -2551,19 +2551,13 @@ const AQTApp: React.FC = () => {
       <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={globalSettings} onSave={(s) => setGlobalSettings((prev) => ({ ...prev, ...s }))} />
 
       {/* Help Guide Modal */}
-      {showHelp && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowHelp(false)}>
-          <div className="max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-            <HelpGuide onClose={() => setShowHelp(false)} />
-          </div>
-        </div>
-      )}
+      <HelpGuide isOpen={showHelp} onClose={() => setShowHelp(false)} />
 
       {/* Risk/Reward Calculator Modal */}
       {showRRCalculator && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowRRCalculator(false)}>
           <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <RiskRewardCalculator onClose={() => setShowRRCalculator(false)} />
+            <RiskRewardCalculator />
           </div>
         </div>
       )}
