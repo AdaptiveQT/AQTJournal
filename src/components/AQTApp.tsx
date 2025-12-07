@@ -49,7 +49,8 @@ import {
   Zap,
   Eye,
   EyeOff,
-  CheckCircle
+  CheckCircle,
+  MoreVertical
 } from "lucide-react";
 import {
   LineChart,
@@ -1586,6 +1587,7 @@ const AQTApp: React.FC = () => {
   const [monthlyGoal, setMonthlyGoal] = useState(800);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [filters, setFilters] = useState<{ pair: string; direction: "" | Direction; minPnl: string; maxPnl: string }>({ pair: "", direction: "", minPnl: "", maxPnl: "" });
   const [notesModalTradeId, setNotesModalTradeId] = useState<string | null>(null);
   const notesTrade = useMemo(() => trades.find((t) => t.id === notesModalTradeId) ?? null, [trades, notesModalTradeId]);
@@ -2156,30 +2158,75 @@ const AQTApp: React.FC = () => {
               <div className="text-xs text-slate-500 dark:text-slate-400">System Time</div>
               <div className="font-mono text-xl">{currentTime.toLocaleTimeString()}</div>
             </div>
-            <button
-              onClick={() => backupJSON({ version: "2.8-pro", timestamp: new Date().toISOString(), balance, trades, settings: { broker, leverage, safeMode, taxBracketIndex, isSection1256, darkMode, globalSettings } })}
-              className="p-3 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50 transition-all"
-              aria-label="Backup"
-            >
-              <Download size={20} />
-            </button>
-            <label className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all cursor-pointer" aria-label="Restore">
-              <Upload size={20} className="text-slate-700 dark:text-slate-300" />
-              <input type="file" accept=".json" onChange={(e) => e.target.files && onRestore(e.target.files[0])} className="hidden" />
-            </label>
+            {/* Primary Action */}
             <button
               onClick={() => setIsFlipMode(true)}
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-600 to-blue-600 text-white hover:from-green-500 hover:to-blue-500 transition-all flex items-center gap-2 font-bold text-sm"
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-600 to-blue-600 text-white hover:from-green-500 hover:to-blue-500 transition-all flex items-center gap-2 font-bold text-sm shadow-md hover:shadow-lg transform active:scale-95"
               title="Switch to Flip Mode"
             >
               <Zap size={16} />
               Flip Mode
             </button>
-            <button onClick={() => setShowHelp(true)} className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-800 transition-all" aria-label="Help Guide"><HelpCircle size={20} /></button>
-            <button onClick={() => setShowRRCalculator(true)} className="p-3 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-800 transition-all" aria-label="Risk/Reward Calculator"><Calculator size={20} /></button>
-            <button onClick={() => setIsSettingsOpen(true)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><SettingsIcon size={20} className="text-slate-700 dark:text-slate-300" /></button>
-            <button onClick={() => setDarkMode(!darkMode)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><Sun size={20} className="text-slate-700 dark:text-slate-300" /></button>
-            <button onClick={handlePrint} className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-all"><Printer size={20} /></button>
+
+            {/* Divider */}
+            <div className="h-6 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block"></div>
+
+            {/* Tools */}
+            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200 dark:border-white/5">
+              <button onClick={() => setShowHelp(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 transition-all" title="Help Guide"><HelpCircle size={18} /></button>
+              <button onClick={() => setShowRRCalculator(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 transition-all" title="Risk/Reward Calculator"><Calculator size={18} /></button>
+            </div>
+
+            {/* Settings */}
+            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200 dark:border-white/5">
+              <button onClick={() => setIsSettingsOpen(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all" title="Settings"><SettingsIcon size={18} /></button>
+              <button onClick={() => setDarkMode(!darkMode)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all" title="Toggle Theme"><Sun size={18} /></button>
+            </div>
+
+            {/* More Menu */}
+            <div className="relative">
+              <button 
+                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                className={`p-2 rounded-full transition-all border ${isMoreMenuOpen ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600' : 'hover:bg-slate-100 dark:hover:bg-slate-800 border-transparent'}`}
+                title="More Options"
+              >
+                <MoreVertical size={20} className="text-slate-600 dark:text-slate-400" />
+              </button>
+              
+              {isMoreMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setIsMoreMenuOpen(false)}></div>
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 py-2 animate-in fade-in zoom-in-95 duration-200">
+                    <button
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        backupJSON({ version: "2.8-pro", timestamp: new Date().toISOString(), balance, trades, settings: { broker, leverage, safeMode, taxBracketIndex, isSection1256, darkMode, globalSettings } });
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                    >
+                      <Download size={16} /> Backup Data
+                    </button>
+                    <label className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer">
+                      <Upload size={16} /> Restore Data
+                      <input type="file" accept=".json" onChange={(e) => {
+                        setIsMoreMenuOpen(false);
+                        e.target.files && onRestore(e.target.files[0]);
+                      }} className="hidden" />
+                    </label>
+                    <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                    <button
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        handlePrint();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                    >
+                      <Printer size={16} /> Print Report
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
