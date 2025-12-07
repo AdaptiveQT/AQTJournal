@@ -918,10 +918,10 @@ const CollapsibleSection: React.FC<{
 }> = ({ title, icon: Icon, children, defaultOpen = true }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden mb-6 transition-all shadow-sm dark:shadow-none">
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden mb-6 transition-all shadow-sm">
       <button
         onClick={() => setIsOpen((s) => !s)}
-        className="w-full flex justify-between items-center p-4 bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors focus:outline-none"
+        className="w-full flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors focus:outline-none"
         aria-label={`Toggle ${title}`}
       >
         <div className="flex items-center gap-2 font-bold text-lg text-slate-800 dark:text-white">
@@ -931,7 +931,7 @@ const CollapsibleSection: React.FC<{
         {isOpen ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
       </button>
       <div style={{ height: isOpen ? "auto" : 0, overflow: "hidden" }}>
-        <div className="p-6 border-t border-slate-200 dark:border-white/10">{children}</div>
+        <div className="p-6 border-t border-slate-200 dark:border-slate-700">{children}</div>
       </div>
     </div>
   );
