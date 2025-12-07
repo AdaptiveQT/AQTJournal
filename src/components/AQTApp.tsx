@@ -43,7 +43,13 @@ import {
   Wallet,
   Cloud,
   CloudOff,
-  Twitter
+  Twitter,
+  Lock,
+  Flame,
+  Zap,
+  Eye,
+  EyeOff,
+  CheckCircle
 } from "lucide-react";
 import {
   LineChart,
@@ -179,6 +185,10 @@ type GlobalSettings = {
   stopLoss: number;
   profitTarget: number;
   dailyGrowth: number;
+  maxDailyLoss?: number;
+  maxTradesPerDay?: number;
+  startBalance?: number;
+  targetBalance?: number;
 };
 
 type PairMeta = { placeholder: string; step: number; multiplier: number; isYen?: boolean; isGold?: boolean; isCrypto?: boolean; isIndex?: boolean };
@@ -1078,6 +1088,438 @@ const QRCodeGenerator: React.FC = () => {
   );
 };
 
+// ============= FLIP MODE COMPONENT =============
+type TradingRule = {
+  id: string;
+  text: string;
+  checked: boolean;
+};
+
+const FlipMode: React.FC<{
+  balance: number;
+  trades: Trade[];
+  settings: GlobalSettings;
+  onAddTrade: (trade: Omit<Trade, 'id' | 'ts' | 'time' | 'date' | 'lots' | 'setup' | 'emotion' | 'notes'>) => void;
+  onSwitchMode: () => void;
+}> = ({ balance, trades, settings, onAddTrade, onSwitchMode }) => {
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showLossModal, setShowLossModal] = useState(false);
+  const [showRulesCheck, setShowRulesCheck] = useState(true);
+  const [newTrade, setNewTrade] = useState({
+    pair: '',
+    direction: 'Long' as Direction,
+    entry: '',
+    exit: ''
+  });
+  
+  const [rules, setRules] = useState<TradingRule[]>([
+    { id: '1', text: 'I am well-rested (7+ hours sleep)', checked: false },
+    { id: '2', text: 'I have reviewed my plan for today', checked: false },
+    { id: '3', text: 'I am emotionally neutral (no revenge trading)', checked: false },
+    { id: '4', text: 'I will follow my stop loss', checked: false },
+    { id: '5', text: `Max ${settings.maxTradesPerDay || 3} trades today`, checked: false }
+  ]);
+
+  const todayKey = useMemo(() => localDayKey(new Date()), []);
+  const todayTrades = useMemo(() => trades.filter(t => t.date === todayKey), [trades, todayKey]);
+  const todayPnl = useMemo(() => todayTrades.reduce((sum, t) => sum + t.pnl, 0), [todayTrades]);
+  const totalPnL = useMemo(() => trades.reduce((sum, t) => sum + t.pnl, 0), [trades]);
+  
+  const dailyGoalAmount = balance * ((settings.dailyGrowth || 5) / 100);
+  const maxDailyLossAmount = balance * ((settings.maxDailyLoss || 5) / 100);
+  const startBalance = settings.startBalance || 100;
+  const targetBalance = settings.targetBalance || 1000;
+  const progressPercent = ((balance - startBalance) / (targetBalance - startBalance)) * 100;
+  const todayGoalPercent = Math.min(100, Math.max(0, (todayPnl / dailyGoalAmount) * 100));
+  
+  const wins = todayTrades.filter(t => t.pnl > 0).length;
+  const losses = todayTrades.filter(t => t.pnl < 0).length;
+  const allRulesChecked = rules.every(r => r.checked);
+  const maxTradesPerDay = settings.maxTradesPerDay || 3;
+
+  useEffect(() => {
+    if (todayPnl >= dailyGoalAmount && dailyGoalAmount > 0 && !showGoalModal) {
+      setShowGoalModal(true);
+    }
+    if (todayPnl <= -maxDailyLossAmount && todayPnl < 0 && !showLossModal) {
+      setShowLossModal(true);
+    }
+  }, [todayPnl, dailyGoalAmount, maxDailyLossAmount, showGoalModal, showLossModal]);
+
+  const handleAddTrade = () => {
+    const entry = parseFloat(newTrade.entry);
+    const exit = parseFloat(newTrade.exit);
+    
+    if (!newTrade.pair || !entry || !exit) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    if (todayTrades.length >= maxTradesPerDay) {
+      alert(`Max ${maxTradesPerDay} trades per day!`);
+      return;
+    }
+
+    const dirMult = newTrade.direction === 'Long' ? 1 : -1;
+    const pnl = (exit - entry) * dirMult * 10000 * ((settings.pipValue || 10) / 10);
+
+    onAddTrade({
+      pair: newTrade.pair.toUpperCase(),
+      direction: newTrade.direction,
+      entry,
+      exit,
+      pnl: Math.round(pnl * 100) / 100
+    });
+
+    setNewTrade({ pair: '', direction: 'Long', entry: '', exit: '' });
+  };
+
+  const toggleRule = (id: string) => {
+    setRules(rules.map(r => r.id === id ? { ...r, checked: !r.checked } : r));
+  };
+
+  const getTip = () => {
+    if (todayTrades.length === 0) return "First trade of the day sets the tone. Make it count!";
+    if (todayTrades.length === 1) return "One down. Stay disciplined on the next ones.";
+    if (todayTrades.length === maxTradesPerDay - 1) return "Final trade of the day. Make it your best one.";
+    if (todayTrades.length >= maxTradesPerDay) return "All trades done! Review and prepare for tomorrow.";
+    return "Focus on quality over quantity. Follow your plan.";
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white p-4">
+      {/* Rules Check Modal */}
+      {showRulesCheck && !allRulesChecked && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 rounded-2xl p-8 max-w-md w-full border border-blue-500/30">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CheckCircle className="text-blue-400" size={32} />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Ready to Trade?</h2>
+              <p className="text-slate-400 text-sm">Check all rules before you start</p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {rules.map(rule => (
+                <label
+                  key={rule.id}
+                  className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-lg cursor-pointer hover:bg-slate-700 transition-colors"
+                >
+                  <input
+                    type="checkbox"
+                    checked={rule.checked}
+                    onChange={() => toggleRule(rule.id)}
+                    className="w-5 h-5 rounded border-slate-500"
+                  />
+                  <span className="text-sm">{rule.text}</span>
+                </label>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setShowRulesCheck(false)}
+              disabled={!allRulesChecked}
+              className={`w-full py-3 rounded-lg font-bold transition-colors ${
+                allRulesChecked 
+                  ? 'bg-green-600 hover:bg-green-500' 
+                  : 'bg-slate-600 cursor-not-allowed'
+              }`}
+            >
+              {allRulesChecked ? "Let's Trade! 🚀" : 'Check All Rules First'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Goal Hit Modal */}
+      {showGoalModal && (
+        <div className="fixed inset-0 bg-green-500/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white text-slate-900 rounded-2xl p-8 max-w-md w-full text-center">
+            <Trophy className="mx-auto mb-4 text-yellow-500" size={80} />
+            <h2 className="text-3xl font-bold mb-2">Goal Hit! 🎯</h2>
+            <div className="text-5xl font-bold text-green-600 mb-4">
+              {fmtUSD(todayPnl)}
+            </div>
+            <p className="text-slate-600 mb-6 text-lg">
+              You hit your daily goal of {fmtUSD(dailyGoalAmount)}!
+            </p>
+            <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg p-4 mb-6">
+              <p className="font-bold text-yellow-800 mb-2">⚠️ Stop Now</p>
+              <p className="text-sm text-yellow-700">
+                Overtrading after hitting your goal is the #1 way to give profits back.
+                Close the app and celebrate your win!
+              </p>
+            </div>
+            <button
+              onClick={() => setShowGoalModal(false)}
+              className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-500"
+            >
+              I'm Done For Today ✓
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Max Loss Modal */}
+      {showLossModal && (
+        <div className="fixed inset-0 bg-red-500/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white text-slate-900 rounded-2xl p-8 max-w-md w-full text-center">
+            <AlertTriangle className="mx-auto mb-4 text-red-500" size={80} />
+            <h2 className="text-3xl font-bold mb-2">Daily Loss Limit Hit</h2>
+            <div className="text-5xl font-bold text-red-600 mb-4">
+              {fmtUSD(todayPnl)}
+            </div>
+            <p className="text-slate-600 mb-6 text-lg">
+              You've hit your max daily loss of {fmtUSD(-maxDailyLossAmount)}
+            </p>
+            <div className="bg-red-50 border-2 border-red-400 rounded-lg p-4 mb-6">
+              <p className="font-bold text-red-800 mb-2">🛑 STOP TRADING</p>
+              <p className="text-sm text-red-700">
+                Trading is now locked for today. Revenge trading will only make it worse.
+                Review your trades, learn, and come back fresh tomorrow.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowLossModal(false)}
+              className="w-full py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-500"
+            >
+              Close App
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="max-w-2xl mx-auto mb-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Zap className="text-yellow-400" size={28} />
+              AQT Flip Mode
+            </h1>
+            <p className="text-sm text-slate-400">Simple. Focused. Profitable.</p>
+          </div>
+          <button
+            onClick={onSwitchMode}
+            className="px-4 py-2 bg-slate-800 rounded-lg text-sm hover:bg-slate-700 flex items-center gap-2"
+          >
+            <Eye size={16} />
+            Pro Mode
+          </button>
+        </div>
+      </div>
+
+      <div className="max-w-2xl mx-auto space-y-6">
+        {/* Big Balance Display */}
+        <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl p-8 text-center relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
+          
+          <div className="relative z-10">
+            <p className="text-blue-200 text-sm mb-2">Account Balance</p>
+            <h2 className="text-6xl font-bold mb-4">{fmtUSD(balance)}</h2>
+            
+            {/* Flip Progress */}
+            <div className="mb-6">
+              <div className="flex justify-between text-xs mb-2">
+                <span className="text-blue-200">${startBalance}</span>
+                <span className="text-blue-100 font-bold">{progressPercent.toFixed(1)}% to goal</span>
+                <span className="text-blue-200">${targetBalance}</span>
+              </div>
+              <div className="h-3 bg-blue-900/30 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-yellow-400 to-green-400 transition-all duration-500"
+                  style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Today's Performance */}
+            <div className="flex justify-around items-center pt-4 border-t border-blue-400/30">
+              <div>
+                <p className="text-blue-200 text-xs mb-1">Today's P&L</p>
+                <p className={`text-2xl font-bold ${todayPnl >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                  {todayPnl >= 0 ? '+' : ''}{fmtUSD(todayPnl)}
+                </p>
+              </div>
+              <div>
+                <p className="text-blue-200 text-xs mb-1">Total Profit</p>
+                <p className={`text-2xl font-bold ${totalPnL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                  {totalPnL >= 0 ? '+' : ''}{fmtUSD(totalPnL)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Daily Goal Tracker */}
+        <div className="bg-slate-800 rounded-xl p-6">
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center gap-2">
+              <Target className="text-green-400" size={20} />
+              <span className="font-bold">Daily Goal</span>
+            </div>
+            <span className={`text-xl font-bold ${todayPnl >= dailyGoalAmount ? 'text-green-400' : 'text-white'}`}>
+              {Math.round(todayGoalPercent)}%
+            </span>
+          </div>
+          
+          <div className="h-4 bg-slate-700 rounded-full overflow-hidden mb-2">
+            <div 
+              className={`h-full transition-all duration-500 ${
+                todayPnl >= dailyGoalAmount ? 'bg-green-500' : 'bg-blue-500'
+              }`}
+              style={{ width: `${Math.min(100, todayGoalPercent)}%` }}
+            />
+          </div>
+          
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-400">{fmtUSD(Math.max(0, todayPnl))} / {fmtUSD(dailyGoalAmount)}</span>
+            <span className="text-slate-400">{fmtUSD(Math.max(0, dailyGoalAmount - todayPnl))} to go</span>
+          </div>
+        </div>
+
+        {/* Trade Limits */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-slate-800 rounded-xl p-4 text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Flame className={todayTrades.length >= maxTradesPerDay ? 'text-red-400' : 'text-yellow-400'} size={20} />
+              <span className="text-sm text-slate-400">Trades Today</span>
+            </div>
+            <p className="text-3xl font-bold">{todayTrades.length}/{maxTradesPerDay}</p>
+            {todayTrades.length >= maxTradesPerDay && (
+              <p className="text-xs text-red-400 mt-1">Limit reached!</p>
+            )}
+          </div>
+          
+          <div className="bg-slate-800 rounded-xl p-4 text-center">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <TrendingUp className="text-blue-400" size={20} />
+              <span className="text-sm text-slate-400">Win Rate</span>
+            </div>
+            <p className="text-3xl font-bold">
+              {todayTrades.length > 0 ? Math.round((wins / todayTrades.length) * 100) : 0}%
+            </p>
+            <p className="text-xs text-slate-400 mt-1">{wins}W / {losses}L</p>
+          </div>
+        </div>
+
+        {/* Quick Trade Entry */}
+        {!showGoalModal && !showLossModal && todayTrades.length < maxTradesPerDay && (
+          <div className="bg-slate-800 rounded-xl p-6">
+            <h3 className="font-bold mb-4 flex items-center gap-2">
+              <DollarSign className="text-green-400" size={20} />
+              Quick Trade Entry
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Pair</label>
+                <input
+                  type="text"
+                  placeholder="EURUSD"
+                  value={newTrade.pair}
+                  onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Direction</label>
+                <select
+                  value={newTrade.direction}
+                  onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as Direction })}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                >
+                  <option value="Long">Long</option>
+                  <option value="Short">Short</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Entry Price</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="1.0850"
+                  value={newTrade.entry}
+                  onChange={(e) => setNewTrade({ ...newTrade, entry: e.target.value })}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+              
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Exit Price</label>
+                <input
+                  type="number"
+                  step="0.0001"
+                  placeholder="1.0900"
+                  value={newTrade.exit}
+                  onChange={(e) => setNewTrade({ ...newTrade, exit: e.target.value })}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
+                />
+              </div>
+            </div>
+            
+            <button
+              onClick={handleAddTrade}
+              className="w-full py-3 bg-green-600 hover:bg-green-500 rounded-lg font-bold transition-colors"
+            >
+              Log Trade
+            </button>
+          </div>
+        )}
+
+        {todayTrades.length >= maxTradesPerDay && !showGoalModal && (
+          <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-xl p-4 text-center">
+            <Lock className="mx-auto mb-2 text-yellow-400" size={32} />
+            <p className="font-bold text-yellow-400 mb-1">Trade Limit Reached</p>
+            <p className="text-sm text-yellow-200">Max {maxTradesPerDay} trades per day. Come back tomorrow.</p>
+          </div>
+        )}
+
+        {/* Today's Trades */}
+        {todayTrades.length > 0 && (
+          <div className="bg-slate-800 rounded-xl p-6">
+            <h3 className="font-bold mb-4">Today's Trades</h3>
+            <div className="space-y-2">
+              {todayTrades.map(trade => (
+                <div key={trade.id} className="bg-slate-700/50 rounded-lg p-3 flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className={`px-2 py-1 rounded text-xs font-bold ${
+                      trade.direction === 'Long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    }`}>
+                      {trade.direction}
+                    </div>
+                    <div>
+                      <p className="font-bold">{trade.pair}</p>
+                      <p className="text-xs text-slate-400">{trade.time}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-bold ${trade.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {trade.pnl >= 0 ? '+' : ''}{fmtUSD(trade.pnl)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Motivational Footer */}
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl p-6 text-center">
+          <p className="text-xl font-bold mb-2">💡 Today's Tip</p>
+          <p className="text-purple-100">{getTip()}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 /* ---------------- Main ---------------- */
 const AQTApp: React.FC = () => {
   // State
@@ -1096,7 +1538,17 @@ const AQTApp: React.FC = () => {
   const [alertsEnabled, setAlertsEnabled] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [darkMode, setDarkMode] = useState<boolean>(true);
-  const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({ pipValue: 10, stopLoss: 15, profitTarget: 30, dailyGrowth: 20 });
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({ 
+    pipValue: 10, 
+    stopLoss: 15, 
+    profitTarget: 30, 
+    dailyGrowth: 5,
+    maxDailyLoss: 5,
+    maxTradesPerDay: 3,
+    startBalance: 100,
+    targetBalance: 1000
+  });
+  const [isFlipMode, setIsFlipMode] = useState(false);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [filters, setFilters] = useState<{ pair: string; direction: "" | Direction; minPnl: string; maxPnl: string }>({ pair: "", direction: "", minPnl: "", maxPnl: "" });
@@ -1557,6 +2009,45 @@ const AQTApp: React.FC = () => {
     );
   }
 
+  // Handle Flip Mode
+  const handleAddTradeForFlipMode = (tradeInput: Omit<Trade, 'id' | 'ts' | 'time' | 'date' | 'lots' | 'setup' | 'emotion' | 'notes'>) => {
+    const ts = Date.now();
+    const trade: Trade = {
+      ...tradeInput,
+      id: generateId(),
+      ts,
+      time: formatTime(ts),
+      date: localDayKey(new Date(ts)),
+      lots: 0.01,
+      setup: 'Manual',
+      emotion: 'Calm',
+      notes: ''
+    };
+    
+    setTrades(prev => [trade, ...prev]);
+    setBalance(prev => Math.round((prev + trade.pnl) * 100) / 100);
+    setBalanceInput(String(Math.round((balance + trade.pnl) * 100) / 100));
+
+    // Persist to Firestore if available
+    if (firebaseReady && db && user) {
+      setDoc(doc(db, 'artifacts', APP_ID, 'users', user.uid, 'trades', trade.id), trade).catch(e => {
+        console.error("Failed to save trade", e);
+      });
+    }
+  };
+
+  if (isFlipMode) {
+    return (
+      <FlipMode
+        balance={balance}
+        trades={trades}
+        settings={globalSettings}
+        onAddTrade={handleAddTradeForFlipMode}
+        onSwitchMode={() => setIsFlipMode(false)}
+      />
+    );
+  }
+
   return (
     <div className={`min-h-screen font-sans overflow-x-hidden pb-12 transition-colors duration-300 ${darkMode ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white" : "bg-slate-50 text-slate-800"}`}>
       <style>{`
@@ -1641,6 +2132,14 @@ const AQTApp: React.FC = () => {
               <Upload size={20} />
               <input type="file" accept=".json" onChange={(e) => e.target.files && onRestore(e.target.files[0])} className="hidden" />
             </label>
+            <button 
+              onClick={() => setIsFlipMode(true)} 
+              className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-600 to-blue-600 text-white hover:from-green-500 hover:to-blue-500 transition-all flex items-center gap-2 font-bold text-sm"
+              title="Switch to Flip Mode"
+            >
+              <Zap size={16} />
+              Flip Mode
+            </button>
             <button onClick={() => setIsSettingsOpen(true)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><SettingsIcon size={20} /></button>
             <button onClick={() => setDarkMode(!darkMode)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><Sun size={20} /></button>
             <button onClick={handlePrint} className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-all"><Printer size={20} /></button>

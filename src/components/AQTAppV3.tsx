@@ -6,12 +6,32 @@ import {
   Download, Upload, Brain, Zap, Trash2, CheckCircle2, Bell, Clock,
   Building2, Calculator, PieChart as PieIcon, BarChart2,
   ChevronDown, ChevronUp, WifiOff, Save, Sun, Moon, Cloud, Loader2, Lock, X,
-  Users, Trophy, Star, Image as ImageIcon, Edit2
+  Users, Trophy, Star, Image as ImageIcon, Edit2, HelpCircle
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar, AreaChart, Area
 } from 'recharts';
+
+// Shared Types
+import type { Trade, NewTradeInput } from '../types';
+
+// Flip Mode Components
+import FlipModeToggle from './FlipMode/FlipModeToggle';
+import FlipDashboard from './FlipMode/FlipDashboard';
+import DailyGoalEnforcer from './FlipMode/DailyGoalEnforcer';
+import HelpGuide from './HelpGuide';
+
+// Feature Components
+import KeyboardShortcutsModal from './KeyboardShortcutsModal';
+import TradeEditModal from './TradeEditModal';
+import ToastNotification from './ToastNotification';
+
+// Hooks
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useUndoDelete } from '../hooks/useUndoDelete';
+import { useDataExport } from '../hooks/useDataExport';
+import { useStreakCalculator } from '../hooks/useStreakCalculator';
 
 // --- FIREBASE IMPORTS ---
 import { auth, db } from '../firebase';
@@ -68,11 +88,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onGoogle, onTwitt
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 md:px-6 py-2 rounded-full font-bold whitespace-nowrap transition-all text-sm md:text-base ${
-                activeTab === tab
-                  ? 'bg-white text-blue-900'
-                  : 'bg-white/5 text-blue-200 hover:bg-white/10'
-              }`}
+              className={`px-4 md:px-6 py-2 rounded-full font-bold whitespace-nowrap transition-all text-sm md:text-base ${activeTab === tab
+                ? 'bg-white text-blue-900'
+                : 'bg-white/5 text-blue-200 hover:bg-white/10'
+                }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
             </button>
@@ -367,19 +386,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({ title, icon: Ic
   );
 };
 
-interface Trade {
-  id: string;
-  pair: string;
-  direction: 'Long' | 'Short';
-  entry: string;
-  exit: string;
-  setup: string;
-  emotion: string;
-  lots: number;
-  pnl: number;
-  date: string;
-  timestamp?: any;
-}
+// Trade interface now imported from shared types
 
 const Dashboard: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -391,9 +398,34 @@ const Dashboard: React.FC = () => {
   const [isPremium, setIsPremium] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
-  const [newTrade, setNewTrade] = useState({
+  const [showHelp, setShowHelp] = useState(false);
+
+  // Flip Mode States
+  const [flipMode, setFlipMode] = useState(false);
+  const [dailyGoal, setDailyGoal] = useState(50);
+  const [weeklyGoal, setWeeklyGoal] = useState(200);
+  const [monthlyGoal, setMonthlyGoal] = useState(800);
+  const [targetBalance, setTargetBalance] = useState(1000);
+  const [startBalance, setStartBalance] = useState(100);
+  const [maxDailyLossPercent, setMaxDailyLossPercent] = useState(5);
+
+  // Keyboard Shortcuts & Editing States
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
+  const tradeEntryRef = useRef<HTMLInputElement>(null);
+
+  // Undo Delete Hook
+  const { addToUndoStack, getLastDeleted, clearLastDeleted, canUndo, notification, showNotification, hideNotification } = useUndoDelete();
+
+  // Data Export Hook
+  const { exportToCSV, exportToJSON } = useDataExport();
+
+  // Streak Calculator
+  const { currentStreak, longestStreak, lastProfitableDay } = useStreakCalculator(trades);
+
+  const [newTrade, setNewTrade] = useState<NewTradeInput>({
     pair: 'EURUSD',
-    direction: 'Long' as 'Long' | 'Short',
+    direction: 'Long',
     entry: '',
     exit: '',
     setup: 'Breakout',
@@ -435,184 +467,255 @@ const Dashboard: React.FC = () => {
             const data = docSnap.data();
             setBalance(typeof data.balance === 'number' ? data.balance : 1000);
             setBroker(data.broker ?? 'IC Markets');
-            setSafeMode(Boolean(data.safeMode ?? true));
-            setIsPremium(Boolean(data.isPremium ?? false));
-            setDarkMode(Boolean(data.darkMode ?? true));
-          } else {
-            if (db) {
-              await setDoc(doc(db, 'users', currentUser.uid), {
-                balance: 1000,
-                isPremium: false,
+            balance: 1000,
+              isPremium: false,
                 darkMode: true,
-                safeMode: true,
-                broker: 'IC Markets'
-              });
-            }
+                  safeMode: true,
+                    broker: 'IC Markets',
+                      flipMode: false,
+                        dailyGoal: 50,
+                          targetBalance: 1000,
+                            startBalance: 100,
+                              maxDailyLossPercent: 5
+          });
+      }
           }
           setLoading(false);
-        });
+  });
 
-        unsubTrades = onSnapshot(
-          query(collection(db, 'users', currentUser.uid, 'trades'), orderBy('timestamp', 'desc')),
-          (snapshot) => setTrades(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Trade)))
-        );
-      } catch (err) {
-        console.error(err);
-        setLoading(false);
-      }
+  unsubTrades = onSnapshot(
+    query(collection(db, 'users', currentUser.uid, 'trades'), orderBy('timestamp', 'desc')),
+    (snapshot) => setTrades(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Trade)))
+  );
+} catch (err) {
+  console.error(err);
+  setLoading(false);
+}
     });
 
-    return () => {
-      if (unsubUserDoc) unsubUserDoc();
-      if (unsubTrades) unsubTrades();
-      unsubAuth();
-    };
+return () => {
+  if (unsubUserDoc) unsubUserDoc();
+  if (unsubTrades) unsubTrades();
+  unsubAuth();
+};
   }, []);
 
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      if (darkMode) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+useEffect(() => {
+  if (typeof document !== 'undefined') {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
-  }, [darkMode]);
+  }
+}, [darkMode]);
 
-  const updateSetting = async (key: string, value: any) => {
-    if (key === 'darkMode') setDarkMode(value);
-    if (key === 'safeMode') setSafeMode(value);
-    if (key === 'broker') setBroker(value);
-    if (user && db) {
-      try {
-        await updateDoc(doc(db, 'users', user.uid), { [key]: value });
-      } catch (e) {
-        console.error('Update failed:', e);
-      }
-    }
-  };
-
-  // --- Auth Helpers: Google / Twitter sign-in (with anonymous upgrade) ---
-  const signInWithProvider = async (which: 'google' | 'twitter') => {
-    if (!auth) return;
-    const provider =
-      which === 'google' ? new GoogleAuthProvider() : new TwitterAuthProvider();
-
-    try {
-      if (auth.currentUser && auth.currentUser.isAnonymous) {
-        // Upgrade the anonymous user (keep data/UID)
-        await linkWithPopup(auth.currentUser, provider);
-      } else {
-        await signInWithPopup(auth, provider);
-      }
-    } catch (e: any) {
-      // Common case: account exists with a different provider
-      if (e?.code === 'auth/account-exists-with-different-credential') {
-        if (typeof window !== 'undefined') {
-          alert(
-            'An account already exists with a different sign-in method for this email. ' +
-            'Please sign in with your original provider and then link the new one from your profile.'
-          );
+const updateSetting = async (key: string, value: any) => {
+  if (key === 'darkMode') setDarkMode(value);
+  if (key === 'safeMode') setSafeMode(value);
+  if (key === 'broker') setBroker(value);
+  if (key === 'flipMode') {
+    setFlipMode(value);
+    // Auto-enable Safe Mode when entering Flip Mode (protect beginners)
+    if (value === true) {
+      setSafeMode(true);
+      if (user && db) {
+        try {
+          await updateDoc(doc(db, 'users', user.uid), { safeMode: true, flipMode: value });
+        } catch (e) {
+          console.error('Update failed:', e);
         }
-      } else {
-        console.error('Sign-in error:', e);
-        if (typeof window !== 'undefined') alert('Sign-in failed. Check console for details.');
       }
+      return; // Early return to avoid double update
     }
-  };
+  }
+  if (key === 'dailyGoal') setDailyGoal(value);
+  if (key === 'targetBalance') setTargetBalance(value);
+  if (key === 'startBalance') setStartBalance(value);
+  if (key === 'maxDailyLossPercent') setMaxDailyLossPercent(value);
 
-  const logout = async () => {
-    if (!auth) return;
+  if (user && db) {
     try {
-      await signOut(auth);
-      // Fall back to anonymous so the app continues to work
-      await signInAnonymously(auth);
+      await updateDoc(doc(db, 'users', user.uid), { [key]: value });
     } catch (e) {
-      console.error('Logout failed:', e);
+      console.error('Update failed:', e);
     }
-  };
+  }
+};
 
-  // Derived metrics (memoized)
-  const metrics = useMemo(() => {
-    const currentTier = TIERS.find(t => balance >= t.min && balance <= t.max) || TIERS[0];
-    const brokerMin = BROKERS[broker]?.minLot ?? 0.01;
-    const baseLot = Math.max(brokerMin, parseFloat((Math.floor(currentTier.min / 10) * 0.01).toFixed(2)));
-    const lotSize = safeMode ? Math.max(brokerMin, parseFloat((baseLot * 0.5).toFixed(2))) : baseLot;
-    const pipValue = +(lotSize * 10).toFixed(2);
-    const maxLoss = +(pipValue * 15).toFixed(2);
-    const nextTier = TIERS[TIERS.indexOf(currentTier) + 1];
-    const raw = nextTier ? ((balance - currentTier.min) / (nextTier.min - currentTier.min)) * 100 : 100;
-    const progress = Math.max(0, Math.min(100, +raw.toFixed(1)));
-    return { currentTier, lotSize, pipValue, maxLoss, progress };
-  }, [balance, broker, safeMode]);
+// --- Auth Helpers: Google / Twitter sign-in (with anonymous upgrade) ---
+const signInWithProvider = async (which: 'google' | 'twitter') => {
+  if (!auth) return;
+  const provider =
+    which === 'google' ? new GoogleAuthProvider() : new TwitterAuthProvider();
 
-  const { currentTier, lotSize, pipValue, maxLoss, progress } = metrics;
-
-  const canLog =
-    newTrade.pair &&
-    !Number.isNaN(parseFloat(newTrade.entry)) &&
-    !Number.isNaN(parseFloat(newTrade.exit));
-
-  const addTrade = async () => {
-    if (!isPremium && trades.length >= 10) {
-      setShowPaywall(true);
-      return;
+  try {
+    if (auth.currentUser && auth.currentUser.isAnonymous) {
+      // Upgrade the anonymous user (keep data/UID)
+      await linkWithPopup(auth.currentUser, provider);
+    } else {
+      await signInWithPopup(auth, provider);
     }
-    if (!user || !db || !canLog) return;
-
-    const en = parseFloat(newTrade.entry);
-    const ex = parseFloat(newTrade.exit);
-    const dir = newTrade.direction === 'Long' ? 1 : -1;
-    const { multiplier } = getPairMetadata(newTrade.pair);
-    const pnl = roundToTwo((ex - en) * dir * multiplier * pipValue);
-
-    const tradeData = {
-      ...newTrade,
-      lots: lotSize,
-      pnl,
-      date: new Date().toLocaleDateString(),
-      timestamp: serverTimestamp()
-    };
-
-    try {
-      await addDoc(collection(db, 'users', user.uid, 'trades'), tradeData);
-      await updateDoc(doc(db, 'users', user.uid), { balance: roundToTwo(balance + pnl) });
-      setNewTrade(prev => ({ ...prev, entry: '', exit: '' }));
-    } catch (e: any) {
+  } catch (e: any) {
+    // Common case: account exists with a different provider
+    if (e?.code === 'auth/account-exists-with-different-credential') {
       if (typeof window !== 'undefined') {
-        alert(e.message);
+        alert(
+          'An account already exists with a different sign-in method for this email. ' +
+          'Please sign in with your original provider and then link the new one from your profile.'
+        );
       }
+    } else {
+      console.error('Sign-in error:', e);
+      if (typeof window !== 'undefined') alert('Sign-in failed. Check console for details.');
     }
+  }
+};
+
+const logout = async () => {
+  if (!auth) return;
+  try {
+    await signOut(auth);
+    // Fall back to anonymous so the app continues to work
+    await signInAnonymously(auth);
+  } catch (e) {
+    console.error('Logout failed:', e);
+  }
+};
+
+// Derived metrics (memoized)
+const metrics = useMemo(() => {
+  const currentTier = TIERS.find(t => balance >= t.min && balance <= t.max) || TIERS[0];
+  const brokerMin = BROKERS[broker]?.minLot ?? 0.01;
+  const baseLot = Math.max(brokerMin, parseFloat((Math.floor(currentTier.min / 10) * 0.01).toFixed(2)));
+  const lotSize = safeMode ? Math.max(brokerMin, parseFloat((baseLot * 0.5).toFixed(2))) : baseLot;
+  const pipValue = +(lotSize * 10).toFixed(2);
+  const maxLoss = +(pipValue * 15).toFixed(2);
+  const nextTier = TIERS[TIERS.indexOf(currentTier) + 1];
+  const raw = nextTier ? ((balance - currentTier.min) / (nextTier.min - currentTier.min)) * 100 : 100;
+  const progress = Math.max(0, Math.min(100, +raw.toFixed(1)));
+  return { currentTier, lotSize, pipValue, maxLoss, progress };
+}, [balance, broker, safeMode]);
+
+const { currentTier, lotSize, pipValue, maxLoss, progress } = metrics;
+
+const canLog =
+  newTrade.pair &&
+  !Number.isNaN(parseFloat(newTrade.entry)) &&
+  !Number.isNaN(parseFloat(newTrade.exit));
+
+const addTrade = async () => {
+  if (!isPremium && trades.length >= 10) {
+    setShowPaywall(true);
+    return;
+  }
+  if (!user || !db || !canLog) return;
+
+  const en = parseFloat(newTrade.entry);
+  const ex = parseFloat(newTrade.exit);
+  const dir = newTrade.direction === 'Long' ? 1 : -1;
+  const { multiplier } = getPairMetadata(newTrade.pair);
+  const pnl = roundToTwo((ex - en) * dir * multiplier * pipValue);
+
+  const tradeData = {
+    ...newTrade,
+    lots: lotSize,
+    pnl,
+    date: new Date().toLocaleDateString(),
+    timestamp: serverTimestamp()
   };
 
-  const deleteTrade = async (t: Trade) => {
-    if (!user || !db) return;
-    if (typeof window === 'undefined' || !window.confirm('Delete trade?')) return;
-
-    try {
-      await deleteDoc(doc(db, 'users', user.uid, 'trades', t.id));
-      await updateDoc(doc(db, 'users', user.uid), { balance: roundToTwo(balance - t.pnl) });
-    } catch (e: any) {
-      if (typeof window !== 'undefined') {
-        alert(e.message);
-      }
-    }
-  };
-
-  const handleUpgrade = () => {
+  try {
+    await addDoc(collection(db, 'users', user.uid, 'trades'), tradeData);
+    await updateDoc(doc(db, 'users', user.uid), { balance: roundToTwo(balance + pnl) });
+    setNewTrade(prev => ({ ...prev, entry: '', exit: '' }));
+  } catch (e: any) {
     if (typeof window !== 'undefined') {
-      window.location.href = 'https://buy.stripe.com/test_your_link_here';
+      alert(e.message);
     }
+  }
+};
+
+const deleteTrade = async (t: Trade) => {
+  if (!user || !db) return;
+  if (typeof window === 'undefined' || !window.confirm('Delete trade?')) return;
+
+  // Save to undo stack before deleting
+  addToUndoStack(t, balance);
+
+  try {
+    await deleteDoc(doc(db, 'users', user.uid, 'trades', t.id));
+    await updateDoc(doc(db, 'users', user.uid), { balance: roundToTwo(balance - t.pnl) });
+    showNotification(`Trade deleted. Press Ctrl+Z to undo.`);
+  } catch (e: any) {
+    if (typeof window !== 'undefined') {
+      alert(e.message);
+    }
+  }
+};
+
+const undoDelete = async () => {
+  const lastDeleted = getLastDeleted();
+  if (!lastDeleted || !user || !db) return;
+
+  try {
+    // Re-add the trade to Firebase (without the id, let Firebase generate new one)
+    const { id, ...tradeWithoutId } = lastDeleted.trade;
+    await addDoc(collection(db, 'users', user.uid, 'trades'), tradeWithoutId);
+    await updateDoc(doc(db, 'users', user.uid), { balance: roundToTwo(balance + lastDeleted.trade.pnl) });
+    clearLastDeleted();
+    showNotification('Trade restored!');
+  } catch (e: any) {
+    if (typeof window !== 'undefined') {
+      alert('Undo failed: ' + e.message);
+    }
+  }
+};
+
+const editTrade = async (updatedTrade: Trade) => {
+  if (!user || !db) return;
+
+  // Recalculate P&L based on updated values
+  const en = parseFloat(updatedTrade.entry);
+  const ex = parseFloat(updatedTrade.exit);
+  const dir = updatedTrade.direction === 'Long' ? 1 : -1;
+  const { multiplier } = getPairMetadata(updatedTrade.pair);
+  const oldPnL = updatedTrade.pnl;
+  const newPnL = roundToTwo((ex - en) * dir * multiplier * updatedTrade.lots);
+
+  const updatedTradeData = {
+    ...updatedTrade,
+    pnl: newPnL
   };
 
-  const exportReportTxt = () => {
-    if (!isPremium) {
-      setShowPaywall(true);
-      return;
+  try {
+    const { id, ...dataToUpdate } = updatedTradeData;
+    await updateDoc(doc(db, 'users', user.uid, 'trades', id), dataToUpdate);
+    // Adjust balance: remove old P&L, add new P&L
+    const newBalance = roundToTwo(balance - oldPnL + newPnL);
+    await updateDoc(doc(db, 'users', user.uid), { balance: newBalance });
+    showNotification('Trade updated successfully!');
+  } catch (e: any) {
+    if (typeof window !== 'undefined') {
+      alert('Edit failed: ' + e.message);
     }
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+  }
+};
 
-    const report = `
+const handleUpgrade = () => {
+  if (typeof window !== 'undefined') {
+    window.location.href = 'https://buy.stripe.com/test_your_link_here';
+  }
+};
+
+const exportReportTxt = () => {
+  if (!isPremium) {
+    setShowPaywall(true);
+    return;
+  }
+  if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+  const report = `
 AQT TRADING PERFORMANCE REPORT
 Generated: ${new Date().toLocaleString()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -625,128 +728,209 @@ Total Trades: ${trades.length}
 Win Rate: ${trades.length > 0 ? ((trades.filter(t => (t.pnl || 0) > 0).length / trades.length) * 100).toFixed(1) : 0}%
 `.trim();
 
-    const blob = new Blob([report], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aqt-report-${new Date().toISOString().split('T')[0]}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
+  const blob = new Blob([report], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `aqt-report-${new Date().toISOString().split('T')[0]}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
 
-  const setupPerformance = useMemo(() => {
-    if (!isPremium) return [];
-    return TRADE_SETUPS.map(s => {
-      const related = trades.filter(t => t.setup === s);
-      if (related.length === 0) return null;
-      const wins = related.filter(t => (t.pnl || 0) > 0).length;
-      return { name: s, winRate: Math.round((wins / related.length) * 100) };
-    }).filter((item): item is { name: string; winRate: number } => item !== null);
-  }, [trades, isPremium]);
+// Keyboard Shortcuts Configuration
+useKeyboardShortcuts({
+  enabled: !showPaywall && !editingTrade && !showKeyboardShortcuts,
+  shortcuts: [
+    {
+      key: 'n',
+      ctrl: true,
+      description: 'Focus trade entry',
+      action: () => tradeEntryRef.current?.focus()
+    },
+    {
+      key: 'Enter',
+      description: 'Submit trade',
+      action: () => {
+        if (canLog && document.activeElement?.tagName === 'INPUT') {
+          addTrade();
+        }
+      }
+    },
+    {
+      key: 'z',
+      ctrl: true,
+      description: 'Undo delete',
+      action: () => {
+        if (canUndo) {
+          undoDelete();
+        }
+      }
+    },
+    {
+      key: '?',
+      description: 'Show shortcuts',
+      action: () => setShowKeyboardShortcuts(true)
+    }
+  ]
+});
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-blue-400">
-        <Loader2 className="animate-spin mr-2" /> Loading Cloud Data...
-      </div>
-    );
-  }
+const setupPerformance = useMemo(() => {
+  if (!isPremium) return [];
+  return TRADE_SETUPS.map(s => {
+    const related = trades.filter(t => t.setup === s);
+    if (related.length === 0) return null;
+    const wins = related.filter(t => (t.pnl || 0) > 0).length;
+    return { name: s, winRate: Math.round((wins / related.length) * 100) };
+  }).filter((item): item is { name: string; winRate: number } => item !== null);
+}, [trades, isPremium]);
 
+if (loading) {
   return (
-    <div className={`min-h-screen font-sans overflow-x-hidden pb-12 transition-colors duration-300 ${darkMode ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-800'}`}>
-      {/* PAYWALL */}
-      {showPaywall && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl p-8 max-w-md w-full text-center relative shadow-2xl">
-            <button onClick={() => setShowPaywall(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
-              <X />
-            </button>
-            <Shield size={48} className="mx-auto text-blue-500 mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-2">Unlock AQT Pro</h2>
-            <p className="text-blue-200 mb-6">Unlimited trades, analytics & cloud sync.</p>
-            <button onClick={handleUpgrade} className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white mb-3">
-              Subscribe for $15/mo
-            </button>
-            <button onClick={() => setShowPaywall(false)} className="text-sm text-slate-400">Maybe Later</button>
-          </div>
-        </div>
-      )}
+    <div className="min-h-screen flex items-center justify-center bg-slate-900 text-blue-400">
+      <Loader2 className="animate-spin mr-2" /> Loading Cloud Data...
+    </div>
+  );
+}
 
-      {/* HEADER */}
-      <div className="max-w-7xl mx-auto p-4 flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            AQT <span className="text-blue-500">v3.4</span>
-          </h1>
-          <div className="flex items-center gap-2 text-xs text-green-500 mt-1">
-            <Cloud size={12} /> {isPremium ? 'Pro Cloud' : 'Free Cloud'}
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          {!isPremium && (
-            <button
-              onClick={() => setShowPaywall(true)}
-              className="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full animate-pulse"
-            >
-              Upgrade
-            </button>
-          )}
-
-          {/* Auth controls */}
-          {user && !user.isAnonymous ? (
-            <div className="flex items-center gap-2">
-              {user.photoURL ? (
-                <img
-                  src={user.photoURL}
-                  alt={user.displayName || 'User'}
-                  className="h-7 w-7 rounded-full border border-white/20"
-                />
-              ) : (
-                <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center text-xs">
-                  {user.displayName?.[0]?.toUpperCase() || 'U'}
-                </div>
-              )}
-              <span className="hidden sm:block text-xs opacity-80 max-w-[140px] truncate">
-                {user.displayName || user.email || 'Signed in'}
-              </span>
-              <button
-                onClick={logout}
-                className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
-                title="Sign out"
-              >
-                Log out
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => signInWithProvider('google')}
-                className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
-                title="Continue with Google"
-              >
-                Google
-              </button>
-              <button
-                onClick={() => signInWithProvider('twitter')}
-                className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
-                title="Continue with Twitter"
-              >
-                Twitter
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={() => updateSetting('darkMode', !darkMode)}
-            className="p-2 rounded-full bg-white/10"
-          >
-            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+return (
+  <div className={`min-h-screen font-sans overflow-x-hidden pb-12 transition-colors duration-300 ${darkMode ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-800'}`}>
+    {/* PAYWALL */}
+    {showPaywall && (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl p-8 max-w-md w-full text-center relative shadow-2xl">
+          <button onClick={() => setShowPaywall(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white">
+            <X />
           </button>
+          <Shield size={48} className="mx-auto text-blue-500 mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">Unlock AQT Pro</h2>
+          <p className="text-blue-200 mb-6">Unlimited trades, analytics & cloud sync.</p>
+          <button onClick={handleUpgrade} className="w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white mb-3">
+            Subscribe for $15/mo
+          </button>
+          <button onClick={() => setShowPaywall(false)} className="text-sm text-slate-400">Maybe Later</button>
         </div>
       </div>
+    )}
 
+    {/* HEADER */}
+    <div className="max-w-7xl mx-auto p-4 flex justify-between items-center">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">
+          AQT <span className="text-blue-500">v3.4</span>
+        </h1>
+        <div className="flex items-center gap-2 text-xs text-green-500 mt-1">
+          <Cloud size={12} /> {isPremium ? 'Pro Cloud' : 'Free Cloud'}
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        {!isPremium && (
+          <button
+            onClick={() => setShowPaywall(true)}
+            className="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full animate-pulse"
+          >
+            Upgrade
+          </button>
+        )}
+
+        {/* Help Button */}
+        <button
+          onClick={() => setShowHelp(true)}
+          className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          title="Help Guide"
+        >
+          <HelpCircle size={20} />
+        </button>
+
+        {/* Flip Mode Toggle */}
+        <FlipModeToggle
+          isFlipMode={flipMode}
+          onToggle={(enabled) => updateSetting('flipMode', enabled)}
+        />
+
+        {/* Auth controls */}
+        {user && !user.isAnonymous ? (
+          <div className="flex items-center gap-2">
+            {user.photoURL ? (
+              <img
+                src={user.photoURL}
+                alt={user.displayName || 'User'}
+                className="h-7 w-7 rounded-full border border-white/20"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-white/10 flex items-center justify-center text-xs">
+                {user.displayName?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
+            <span className="hidden sm:block text-xs opacity-80 max-w-[140px] truncate">
+              {user.displayName || user.email || 'Signed in'}
+            </span>
+            <button
+              onClick={logout}
+              className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
+              title="Sign out"
+            >
+              Log out
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => signInWithProvider('google')}
+              className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
+              title="Continue with Google"
+            >
+              Google
+            </button>
+            <button
+              onClick={() => signInWithProvider('twitter')}
+              className="px-2 py-1 rounded bg-white/10 text-xs hover:bg-white/20"
+              title="Continue with Twitter"
+            >
+              Twitter
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={() => updateSetting('darkMode', !darkMode)}
+          className="p-2 rounded-full bg-white/10"
+        >
+          {darkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+      </div>
+    </div>
+
+    {/* Help Guide Modal */}
+    <HelpGuide isOpen={showHelp} onClose={() => setShowHelp(false)} />
+
+    {/* Daily Goal Enforcer Modal */}
+    <DailyGoalEnforcer
+      todayPnL={trades.filter(t => t.date === new Date().toLocaleDateString()).reduce((sum, t) => sum + (t.pnl || 0), 0)}
+      dailyGoal={dailyGoal}
+      onClose={logout}
+    />
+
+    {/* Conditional Rendering: Flip Mode or Pro Mode */}
+    {flipMode ? (
+      <FlipDashboard
+        balance={balance}
+        trades={trades}
+        dailyGoal={dailyGoal}
+        targetBalance={targetBalance}
+        startBalance={startBalance}
+        maxDailyLossPercent={maxDailyLossPercent}
+        newTrade={newTrade}
+        onNewTradeChange={setNewTrade}
+        onAddTrade={addTrade}
+        onDeleteTrade={deleteTrade}
+        onUpdateSettings={updateSetting}
+        canLog={canLog}
+        TRADE_SETUPS={TRADE_SETUPS}
+        EMOTIONS={EMOTIONS}
+      />
+    ) : (
       <div className="max-w-7xl mx-auto space-y-4 p-4">
         {/* CONFIG */}
         <CollapsibleSection title="Configuration" icon={Shield}>
@@ -851,6 +1035,7 @@ Win Rate: ${trades.length > 0 ? ((trades.filter(t => (t.pnl || 0) > 0).length / 
           </div>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             <input
+              ref={tradeEntryRef}
               type="text"
               placeholder="Pair"
               value={newTrade.pair}
@@ -918,7 +1103,7 @@ Win Rate: ${trades.length > 0 ? ((trades.filter(t => (t.pnl || 0) > 0).length / 
                   <th>Setup</th>
                   <th>Emo</th>
                   <th>P&L</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -928,11 +1113,10 @@ Win Rate: ${trades.length > 0 ? ((trades.filter(t => (t.pnl || 0) > 0).length / 
                     <td className="py-3 font-bold">
                       {t.pair}{' '}
                       <span
-                        className={`text-[10px] ml-1 px-1 rounded ${
-                          t.direction === 'Long'
-                            ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400'
-                            : 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
-                        }`}
+                        className={`text-[10px] ml-1 px-1 rounded ${t.direction === 'Long'
+                          ? 'bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400'
+                          : 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400'
+                          }`}
                       >
                         {t.direction}
                       </span>
@@ -943,9 +1127,14 @@ Win Rate: ${trades.length > 0 ? ((trades.filter(t => (t.pnl || 0) > 0).length / 
                       ${Number(t.pnl || 0).toFixed(2)}
                     </td>
                     <td className="py-3">
-                      <button onClick={() => deleteTrade(t)} className="text-slate-400 hover:text-red-500">
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => setEditingTrade(t)} className="text-slate-400 hover:text-blue-500" title="Edit trade">
+                          <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => deleteTrade(t)} className="text-slate-400 hover:text-red-500" title="Delete trade">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -954,8 +1143,26 @@ Win Rate: ${trades.length > 0 ? ((trades.filter(t => (t.pnl || 0) > 0).length / 
           </div>
         </CollapsibleSection>
       </div>
-    </div>
-  );
+    )}
+
+    {/* MODALS & NOTIFICATIONS */}
+    <KeyboardShortcutsModal
+      isOpen={showKeyboardShortcuts}
+      onClose={() => setShowKeyboardShortcuts(false)}
+    />
+
+    <TradeEditModal
+      trade={editingTrade}
+      isOpen={!!editingTrade}
+      onClose={() => setEditingTrade(null)}
+      onSave={editTrade}
+      TRADE_SETUPS={TRADE_SETUPS}
+      EMOTIONS={EMOTIONS}
+    />
+
+    <ToastNotification message={notification} onClose={hideNotification} />
+  </div>
+);
 };
 
 // ==========================================
@@ -967,10 +1174,10 @@ const RootApp: React.FC = () => {
 
   return view === 'landing'
     ? <LandingPage
-        onEnterApp={() => setView('app')}
-        onGoogle={() => setView('app')}
-        onTwitter={() => setView('app')}
-      />
+      onEnterApp={() => setView('app')}
+      onGoogle={() => setView('app')}
+      onTwitter={() => setView('app')}
+    />
     : <Dashboard />;
 };
 
