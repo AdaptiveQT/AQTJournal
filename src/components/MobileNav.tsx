@@ -1,24 +1,23 @@
 'use client';
 
 import React from 'react';
-import { Home, TrendingUp, Settings, FileText } from 'lucide-react';
+import { Home, TrendingUp, FileText } from 'lucide-react';
 
 interface MobileNavProps {
-    activeTab: 'dashboard' | 'trades' | 'settings' | 'reports';
-    onTabChange: (tab: 'dashboard' | 'trades' | 'settings' | 'reports') => void;
+    activeTab: 'dashboard' | 'trades' | 'reports';
+    onTabChange: (tab: 'dashboard' | 'trades' | 'reports') => void;
 }
 
 const MobileNav: React.FC<MobileNavProps> = ({ activeTab, onTabChange }) => {
     const tabs = [
         { id: 'dashboard' as const, icon: Home, label: 'Home' },
         { id: 'trades' as const, icon: TrendingUp, label: 'Trades' },
-        { id: 'reports' as const, icon: FileText, label: 'Reports' },
-        { id: 'settings' as const, icon: Settings, label: 'Settings' }
+        { id: 'reports' as const, icon: FileText, label: 'Reports' }
     ];
 
     return (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-white/10 z-40 safe-area-bottom">
-            <div className="grid grid-cols-4 h-16">
+            <div className="grid grid-cols-3 h-16">
                 {tabs.map(tab => {
                     const isActive = activeTab === tab.id;
                     return (
