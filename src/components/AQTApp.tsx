@@ -270,53 +270,79 @@ const BROKER_BE_BUFFER: Record<string, number> = {
 
 /** Display-only list of common commission vs spread-only models */
 const BROKER_MODELS: { name: string; models: PricingModel[] }[] = [
-  { name: "OANDA", models: [
-    { label: "Core", commission: true, note: "Spread + commission" },
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
-  { name: "FOREX.com", models: [
-    { label: "RAW", commission: true, note: "Spread + commission" },
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
-  { name: "Pepperstone", models: [
-    { label: "Razor", commission: true, note: "Spread + commission" },
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
-  { name: "IC Markets", models: [
-    { label: "Raw/ECN", commission: true, note: "Spread + commission" },
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
-  { name: "XM", models: [
-    { label: "Zero", commission: true, note: "Spread + commission" },
-    { label: "Standard/Micro", commission: false, note: "Spread-only" },
-  ]},
-  { name: "Exness", models: [
-    { label: "Raw/Zero", commission: true, note: "Spread + commission" },
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
-  { name: "BlackBull Markets", models: [
-    { label: "ECN", commission: true, note: "Spread + commission" },
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
-  { name: "Eightcap", models: [
-    { label: "Raw", commission: true, note: "Spread + commission" },
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
-  { name: "HankoTrade", models: [
-    { label: "ECN", commission: true, note: "Spread + commission" },
-  ]},
-  { name: "Coinexx", models: [
-    { label: "ECN", commission: true, note: "Spread + commission" },
-  ]},
-  { name: "IG US", models: [
-    { label: "Standard", commission: false, note: "Spread-only (CFDs/FX)" },
-  ]},
-  { name: "AvaTrade", models: [
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
-  { name: "eToro", models: [
-    { label: "Standard", commission: false, note: "Spread-only" },
-  ]},
+  {
+    name: "OANDA", models: [
+      { label: "Core", commission: true, note: "Spread + commission" },
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "FOREX.com", models: [
+      { label: "RAW", commission: true, note: "Spread + commission" },
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "Pepperstone", models: [
+      { label: "Razor", commission: true, note: "Spread + commission" },
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "IC Markets", models: [
+      { label: "Raw/ECN", commission: true, note: "Spread + commission" },
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "XM", models: [
+      { label: "Zero", commission: true, note: "Spread + commission" },
+      { label: "Standard/Micro", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "Exness", models: [
+      { label: "Raw/Zero", commission: true, note: "Spread + commission" },
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "BlackBull Markets", models: [
+      { label: "ECN", commission: true, note: "Spread + commission" },
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "Eightcap", models: [
+      { label: "Raw", commission: true, note: "Spread + commission" },
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "HankoTrade", models: [
+      { label: "ECN", commission: true, note: "Spread + commission" },
+    ]
+  },
+  {
+    name: "Coinexx", models: [
+      { label: "ECN", commission: true, note: "Spread + commission" },
+    ]
+  },
+  {
+    name: "IG US", models: [
+      { label: "Standard", commission: false, note: "Spread-only (CFDs/FX)" },
+    ]
+  },
+  {
+    name: "AvaTrade", models: [
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
+  {
+    name: "eToro", models: [
+      { label: "Standard", commission: false, note: "Spread-only" },
+    ]
+  },
 ];
 
 const COMMON_PAIRS = ["EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "USDCAD", "BTCUSD", "ETHUSD", "US30", "NAS100", "SPX500"];
@@ -1111,7 +1137,7 @@ const FlipMode: React.FC<{
     entry: '',
     exit: ''
   });
-  
+
   const [rules, setRules] = useState<TradingRule[]>([
     { id: '1', text: 'I am well-rested (7+ hours sleep)', checked: false },
     { id: '2', text: 'I have reviewed my plan for today', checked: false },
@@ -1124,14 +1150,14 @@ const FlipMode: React.FC<{
   const todayTrades = useMemo(() => trades.filter(t => t.date === todayKey), [trades, todayKey]);
   const todayPnl = useMemo(() => todayTrades.reduce((sum, t) => sum + t.pnl, 0), [todayTrades]);
   const totalPnL = useMemo(() => trades.reduce((sum, t) => sum + t.pnl, 0), [trades]);
-  
+
   const dailyGoalAmount = balance * ((settings.dailyGrowth || 5) / 100);
   const maxDailyLossAmount = balance * ((settings.maxDailyLoss || 5) / 100);
   const startBalance = settings.startBalance || 100;
   const targetBalance = settings.targetBalance || 1000;
   const progressPercent = ((balance - startBalance) / (targetBalance - startBalance)) * 100;
   const todayGoalPercent = Math.min(100, Math.max(0, (todayPnl / dailyGoalAmount) * 100));
-  
+
   const wins = todayTrades.filter(t => t.pnl > 0).length;
   const losses = todayTrades.filter(t => t.pnl < 0).length;
   const allRulesChecked = rules.every(r => r.checked);
@@ -1149,7 +1175,7 @@ const FlipMode: React.FC<{
   const handleAddTrade = () => {
     const entry = parseFloat(newTrade.entry);
     const exit = parseFloat(newTrade.exit);
-    
+
     if (!newTrade.pair || !entry || !exit) {
       alert('Please fill all fields');
       return;
@@ -1220,11 +1246,10 @@ const FlipMode: React.FC<{
             <button
               onClick={() => setShowRulesCheck(false)}
               disabled={!allRulesChecked}
-              className={`w-full py-3 rounded-lg font-bold transition-colors ${
-                allRulesChecked 
-                  ? 'bg-green-600 hover:bg-green-500' 
+              className={`w-full py-3 rounded-lg font-bold transition-colors ${allRulesChecked
+                  ? 'bg-green-600 hover:bg-green-500'
                   : 'bg-slate-600 cursor-not-allowed'
-              }`}
+                }`}
             >
               {allRulesChecked ? "Let's Trade! 🚀" : 'Check All Rules First'}
             </button>
@@ -1315,11 +1340,11 @@ const FlipMode: React.FC<{
         <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl p-8 text-center relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12"></div>
-          
+
           <div className="relative z-10">
             <p className="text-blue-200 text-sm mb-2">Account Balance</p>
             <h2 className="text-6xl font-bold mb-4">{fmtUSD(balance)}</h2>
-            
+
             {/* Flip Progress */}
             <div className="mb-6">
               <div className="flex justify-between text-xs mb-2">
@@ -1328,7 +1353,7 @@ const FlipMode: React.FC<{
                 <span className="text-blue-200">${targetBalance}</span>
               </div>
               <div className="h-3 bg-blue-900/30 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-yellow-400 to-green-400 transition-all duration-500"
                   style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
                 />
@@ -1364,16 +1389,15 @@ const FlipMode: React.FC<{
               {Math.round(todayGoalPercent)}%
             </span>
           </div>
-          
+
           <div className="h-4 bg-slate-700 rounded-full overflow-hidden mb-2">
-            <div 
-              className={`h-full transition-all duration-500 ${
-                todayPnl >= dailyGoalAmount ? 'bg-green-500' : 'bg-blue-500'
-              }`}
+            <div
+              className={`h-full transition-all duration-500 ${todayPnl >= dailyGoalAmount ? 'bg-green-500' : 'bg-blue-500'
+                }`}
               style={{ width: `${Math.min(100, todayGoalPercent)}%` }}
             />
           </div>
-          
+
           <div className="flex justify-between text-sm">
             <span className="text-slate-400">{fmtUSD(Math.max(0, todayPnl))} / {fmtUSD(dailyGoalAmount)}</span>
             <span className="text-slate-400">{fmtUSD(Math.max(0, dailyGoalAmount - todayPnl))} to go</span>
@@ -1392,7 +1416,7 @@ const FlipMode: React.FC<{
               <p className="text-xs text-red-400 mt-1">Limit reached!</p>
             )}
           </div>
-          
+
           <div className="bg-slate-800 rounded-xl p-4 text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
               <TrendingUp className="text-blue-400" size={20} />
@@ -1412,7 +1436,7 @@ const FlipMode: React.FC<{
               <DollarSign className="text-green-400" size={20} />
               Quick Trade Entry
             </h3>
-            
+
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Pair</label>
@@ -1424,7 +1448,7 @@ const FlipMode: React.FC<{
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                 />
               </div>
-              
+
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Direction</label>
                 <select
@@ -1437,7 +1461,7 @@ const FlipMode: React.FC<{
                 </select>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Entry Price</label>
@@ -1450,7 +1474,7 @@ const FlipMode: React.FC<{
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                 />
               </div>
-              
+
               <div>
                 <label className="text-xs text-slate-400 block mb-1">Exit Price</label>
                 <input
@@ -1463,7 +1487,7 @@ const FlipMode: React.FC<{
                 />
               </div>
             </div>
-            
+
             <button
               onClick={handleAddTrade}
               className="w-full py-3 bg-green-600 hover:bg-green-500 rounded-lg font-bold transition-colors"
@@ -1489,9 +1513,8 @@ const FlipMode: React.FC<{
               {todayTrades.map(trade => (
                 <div key={trade.id} className="bg-slate-700/50 rounded-lg p-3 flex justify-between items-center">
                   <div className="flex items-center gap-3">
-                    <div className={`px-2 py-1 rounded text-xs font-bold ${
-                      trade.direction === 'Long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                    }`}>
+                    <div className={`px-2 py-1 rounded text-xs font-bold ${trade.direction === 'Long' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      }`}>
                       {trade.direction}
                     </div>
                     <div>
@@ -1538,10 +1561,10 @@ const AQTApp: React.FC = () => {
   const [alertsEnabled, setAlertsEnabled] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [darkMode, setDarkMode] = useState<boolean>(true);
-  const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({ 
-    pipValue: 10, 
-    stopLoss: 15, 
-    profitTarget: 30, 
+  const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({
+    pipValue: 10,
+    stopLoss: 15,
+    profitTarget: 30,
     dailyGrowth: 5,
     maxDailyLoss: 5,
     maxTradesPerDay: 3,
@@ -2023,7 +2046,7 @@ const AQTApp: React.FC = () => {
       emotion: 'Calm',
       notes: ''
     };
-    
+
     setTrades(prev => [trade, ...prev]);
     setBalance(prev => Math.round((prev + trade.pnl) * 100) / 100);
     setBalanceInput(String(Math.round((balance + trade.pnl) * 100) / 100));
@@ -2129,19 +2152,19 @@ const AQTApp: React.FC = () => {
               <Download size={20} />
             </button>
             <label className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all cursor-pointer" aria-label="Restore">
-              <Upload size={20} />
+              <Upload size={20} className="text-slate-700 dark:text-slate-300" />
               <input type="file" accept=".json" onChange={(e) => e.target.files && onRestore(e.target.files[0])} className="hidden" />
             </label>
-            <button 
-              onClick={() => setIsFlipMode(true)} 
+            <button
+              onClick={() => setIsFlipMode(true)}
               className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-600 to-blue-600 text-white hover:from-green-500 hover:to-blue-500 transition-all flex items-center gap-2 font-bold text-sm"
               title="Switch to Flip Mode"
             >
               <Zap size={16} />
               Flip Mode
             </button>
-            <button onClick={() => setIsSettingsOpen(true)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><SettingsIcon size={20} /></button>
-            <button onClick={() => setDarkMode(!darkMode)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><Sun size={20} /></button>
+            <button onClick={() => setIsSettingsOpen(true)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><SettingsIcon size={20} className="text-slate-700 dark:text-slate-300" /></button>
+            <button onClick={() => setDarkMode(!darkMode)} className="p-3 rounded-full bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"><Sun size={20} className="text-slate-700 dark:text-slate-300" /></button>
             <button onClick={handlePrint} className="p-3 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-800 transition-all"><Printer size={20} /></button>
           </div>
         </div>
