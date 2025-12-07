@@ -2190,7 +2190,11 @@ const AQTApp: React.FC = () => {
         <PerformanceSummary metrics={riskMetrics} />
 
         {/* STREAK TRACKER */}
-        <StreakTracker trades={trades} />
+        <StreakTracker
+          currentStreak={riskMetrics.currentStreak}
+          longestStreak={riskMetrics.bestStreak}
+          lastProfitableDay={sortedTrades.find(t => t.pnl > 0)?.date || null}
+        />
 
         {/* GOALS & BENCHMARKS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
