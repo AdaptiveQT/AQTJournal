@@ -2562,8 +2562,6 @@ const AQTApp: React.FC = () => {
         </div>
       )}
 
-      <HelpTooltip />
-      <QRCodeGenerator />
     </div>
   );
 };
