@@ -2576,8 +2576,8 @@ const AQTApp: React.FC = () => {
               <div className={`text-xl font-bold ${totalPnL >= 0 ? "text-green-500" : "text-red-500"}`} aria-live="polite">{fmtUSD(totalPnL)}</div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-2 block">Account</div>
-              <div className="text-xl font-bold dark:text-white" aria-live="polite">{fmtUSD(balance)}</div>
+              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-2 block bg-transparent">Account</div>
+              <div className="text-xl font-bold text-slate-900 dark:text-white bg-transparent" aria-live="polite">{fmtUSD(balance)}</div>
             </div>
           </div>
         </div>
