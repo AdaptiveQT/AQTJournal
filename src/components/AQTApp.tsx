@@ -87,6 +87,10 @@ import GoalTracker from "./Goals/GoalTracker";
 import ShortcutManager, { createDefaultShortcuts } from "./ShortcutManager";
 import FocusMode from "./FocusMode";
 import InstallPrompt from "./InstallPrompt";
+import EmptyState, { DemoDataBanner, DemoModeIndicator } from "./EmptyState";
+
+// Demo Data
+import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
 
 // Utilities
 import { InsightsEngine } from "../utils/insightsEngine";
@@ -1788,6 +1792,9 @@ const AQTApp: React.FC = () => {
   const [showInsights, setShowInsights] = useState(false);
   const [showGoalTracker, setShowGoalTracker] = useState(false);
 
+  // Demo Mode State
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [showDemoBanner, setShowDemoBanner] = useState(true);
   // Refs
   const entryRef = useRef<HTMLInputElement>(null);
   const exitRef = useRef<HTMLInputElement>(null);
@@ -2250,6 +2257,34 @@ const AQTApp: React.FC = () => {
     }
   };
 
+  // ============= DEMO MODE HANDLERS =============
+  const loadDemoData = useCallback(() => {
+    // Cast DEMO_TRADES to match local Trade type
+    const demoTradesTyped = DEMO_TRADES.map(t => ({
+      ...t,
+      time: t.time || '09:00',
+      imageUrl: undefined
+    })) as Trade[];
+
+    setTrades(demoTradesTyped);
+    setBalance(1000); // Demo starting balance
+    setBalanceInput('1000');
+    setIsDemoMode(true);
+    setShowDemoBanner(false);
+
+    console.log('[AQT] Demo data loaded: 100 sample trades');
+  }, []);
+
+  const clearDemoData = useCallback(() => {
+    setTrades([]);
+    setBalance(100);
+    setBalanceInput('100');
+    setIsDemoMode(false);
+    setShowDemoBanner(true);
+
+    console.log('[AQT] Demo data cleared');
+  }, []);
+
   // ============= PHASE 1-5: NEW HANDLERS =============
 
   // Tag Handlers
@@ -2555,6 +2590,14 @@ const AQTApp: React.FC = () => {
 
         {/* ALERTS */}
         <WithdrawalAlert balance={balance} />
+
+        {/* DEMO DATA BANNER */}
+        {trades.length === 0 && showDemoBanner && !isDemoMode && (
+          <DemoDataBanner
+            onLoadDemo={loadDemoData}
+            onDismiss={() => setShowDemoBanner(false)}
+          />
+        )}
 
         {/* SUMMARY */}
         <PerformanceSummary metrics={riskMetrics} />
@@ -3191,6 +3234,11 @@ const AQTApp: React.FC = () => {
 
       {/* PWA Install Prompt */}
       <InstallPrompt />
+
+      {/* Demo Mode Indicator */}
+      {isDemoMode && (
+        <DemoModeIndicator onClearDemo={clearDemoData} />
+      )}
 
     </div>
   );

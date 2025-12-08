@@ -14,6 +14,7 @@ export interface Trade {
     pnl: number;
     date: string;
     ts: number;
+    time?: string; // HH:MM format
     timestamp?: any;
     stopLoss?: string;
     takeProfit?: string;
