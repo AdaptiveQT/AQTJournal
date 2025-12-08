@@ -30,7 +30,7 @@ import { User } from 'lucide-react';
 interface ImportWizardProps {
     isOpen: boolean;
     onClose: () => void;
-    onImport: (trades: Trade[], accountInfo?: MT5AccountInfo | null) => void;
+    onImport: (trades: Trade[], accountInfo?: MT5AccountInfo | null, startingBalance?: number) => void;
     darkMode?: boolean;
 }
 
@@ -67,6 +67,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
     const [importResult, setImportResult] = useState<ImportResult | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [accountInfo, setAccountInfo] = useState<MT5AccountInfo | null>(null);
+    const [startingBalance, setStartingBalance] = useState<number>(0);
 
     // Reset wizard
     const reset = useCallback(() => {
@@ -78,6 +79,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
         setMappings([]);
         setImportResult(null);
         setAccountInfo(null);
+        setStartingBalance(0);
     }, []);
 
     // Handle file selection
@@ -92,6 +94,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
             setHeaders(result.headers);
             setRows(result.rows);
             setAccountInfo(result.accountInfo || null);
+            setStartingBalance(result.startingBalance || 0);
 
             // Auto-detect mappings
             const detectedMappings = detectColumnMappings(result.headers);
@@ -150,14 +153,14 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
     // Final import
     const handleImport = useCallback(() => {
         if (importResult?.trades.length) {
-            onImport(importResult.trades, accountInfo);
+            onImport(importResult.trades, accountInfo, startingBalance);
             setStep('complete');
             setTimeout(() => {
                 reset();
                 onClose();
             }, 2000);
         }
-    }, [importResult, onImport, reset, onClose, accountInfo]);
+    }, [importResult, onImport, reset, onClose, accountInfo, startingBalance]);
 
     if (!isOpen) return null;
 

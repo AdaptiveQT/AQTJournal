@@ -3,7 +3,7 @@
  * Supports CSV parsing with column auto-detection and MT4/MT5 format handling
  */
 
-import { Trade } from '../types';
+import { Trade, BalanceOperation } from '../types';
 
 // ============= TYPES =============
 
@@ -730,6 +730,84 @@ export interface ImportFileResult {
     rows: ParsedRow[];
     fileType: ImportFileType;
     accountInfo?: MT5AccountInfo | null;
+    balanceOperations?: BalanceOperation[];
+    startingBalance?: number;
+}
+
+/**
+ * Extract balance operations (deposits/withdrawals) from MT5 Deals table
+ * Deals with Type="balance" are deposits (Direction=in) or withdrawals (Direction=out)
+ */
+export function extractBalanceOperations(html: string): { operations: BalanceOperation[], startingBalance: number } {
+    const operations: BalanceOperation[] = [];
+    let startingBalance = 0;
+
+    // Parse the Deals table
+    const dealsData = extractMT5Table(html, 'Deals');
+    if (dealsData.rows.length === 0) {
+        return { operations, startingBalance };
+    }
+
+    // Find columns - looking for: Time, Type, Direction, Profit, Balance, Comment
+    const headers = dealsData.headers.map(h => h.toLowerCase());
+    const timeIdx = headers.findIndex(h => h.includes('time'));
+    const typeIdx = headers.findIndex(h => h === 'type');
+    const directionIdx = headers.findIndex(h => h.includes('direction'));
+    const profitIdx = headers.findIndex(h => h.includes('profit'));
+    const balanceIdx = headers.findIndex(h => h.includes('balance'));
+    const commentIdx = headers.findIndex(h => h.includes('comment') || h.includes('notes'));
+    const dealIdIdx = headers.findIndex(h => h.includes('deal'));
+
+    for (const row of dealsData.rows) {
+        const values = Object.values(row);
+        const type = typeIdx >= 0 ? values[typeIdx]?.toLowerCase() : '';
+
+        // Balance operations have Type = "balance"
+        if (type === 'balance') {
+            const direction = directionIdx >= 0 ? values[directionIdx]?.toLowerCase() : '';
+            const profit = profitIdx >= 0 ? parseFloat(values[profitIdx]?.replace(/[^0-9.-]/g, '') || '0') : 0;
+            const balance = balanceIdx >= 0 ? parseFloat(values[balanceIdx]?.replace(/[^0-9.-]/g, '') || '0') : 0;
+            const dateStr = timeIdx >= 0 ? values[timeIdx] || '' : '';
+            const comment = commentIdx >= 0 ? values[commentIdx] || '' : '';
+            const dealId = dealIdIdx >= 0 ? values[dealIdIdx] || '' : '';
+
+            // Parse date (format: "2025.05.11 02:44:48" or similar)
+            let date = '';
+            let ts = 0;
+            if (dateStr) {
+                const dateMatch = dateStr.match(/(\d{4})[.\-/](\d{2})[.\-/](\d{2})/);
+                if (dateMatch) {
+                    date = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`;
+                    ts = new Date(dateStr.replace(/\./g, '-').replace(' ', 'T')).getTime() || Date.now();
+                }
+            }
+
+            const amount = Math.abs(profit);
+            const opType = (direction === 'in' || profit > 0) ? 'deposit' : 'withdrawal';
+
+            if (amount > 0) {
+                operations.push({
+                    id: `bal-${dealId || Date.now()}-${operations.length}`,
+                    type: opType,
+                    amount,
+                    date,
+                    ts,
+                    balance,
+                    comment
+                });
+
+                // First deposit sets the starting balance
+                if (operations.length === 1 && opType === 'deposit') {
+                    startingBalance = amount;
+                }
+            }
+        }
+    }
+
+    // Sort by timestamp
+    operations.sort((a, b) => a.ts - b.ts);
+
+    return { operations, startingBalance };
 }
 
 /**
@@ -743,13 +821,16 @@ export function importFile(
 
     if (fileType === 'html') {
         const accountInfo = extractMT5AccountInfo(content);
+        const { operations, startingBalance } = extractBalanceOperations(content);
         return {
             ...parseMT4HTML(content),
             fileType,
-            accountInfo
+            accountInfo,
+            balanceOperations: operations,
+            startingBalance
         };
     }
 
-    return { ...parseCSV(content), fileType, accountInfo: null };
+    return { ...parseCSV(content), fileType, accountInfo: null, balanceOperations: [], startingBalance: 0 };
 }
 

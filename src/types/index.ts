@@ -45,6 +45,21 @@ export interface TradingAccount {
     createdAt: number;      // Timestamp when account was added
     lastUpdated: number;    // Timestamp of last import
     lastReportDate?: string; // Date from last imported report
+    startingBalance?: number; // Initial balance from first deposit
+}
+
+/**
+ * Deposit or withdrawal from account (from MT5 Deals table)
+ */
+export interface BalanceOperation {
+    id: string;
+    type: 'deposit' | 'withdrawal';
+    amount: number;         // Always positive amount
+    date: string;           // YYYY-MM-DD format
+    ts: number;             // Timestamp for sorting
+    balance: number;        // Running balance after operation
+    comment?: string;       // e.g., "Auto-Account-Deposit"
+    accountId?: string;     // Link to TradingAccount
 }
 
 export interface NewTradeInput {

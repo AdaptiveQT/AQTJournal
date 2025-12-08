@@ -3522,7 +3522,7 @@ const AQTApp: React.FC = () => {
         <ImportWizard
           isOpen={showImportWizard}
           onClose={() => setShowImportWizard(false)}
-          onImport={(importedTrades, accountInfo) => {
+          onImport={(importedTrades, accountInfo, startingBalance) => {
             // Handle account info if present
             let accountId: string | undefined;
             if (accountInfo && (accountInfo.name || accountInfo.accountNumber)) {
@@ -3540,7 +3540,7 @@ const AQTApp: React.FC = () => {
                     : acc
                 ));
               } else {
-                // Create new account
+                // Create new account with starting balance
                 const newAccount: TradingAccount = {
                   id: `acct-${Date.now()}`,
                   name: accountInfo.name || 'Unknown',
@@ -3551,7 +3551,8 @@ const AQTApp: React.FC = () => {
                   server: accountInfo.server,
                   createdAt: Date.now(),
                   lastUpdated: Date.now(),
-                  lastReportDate: accountInfo.reportDate
+                  lastReportDate: accountInfo.reportDate,
+                  startingBalance: startingBalance || 0
                 };
                 accountId = newAccount.id;
                 setAccounts(prev => [...prev, newAccount]);
@@ -3561,6 +3562,16 @@ const AQTApp: React.FC = () => {
                   setActiveAccountId(newAccount.id);
                 }
               }
+            }
+
+            // Update balance to starting balance from first deposit
+            if (startingBalance && startingBalance > 0) {
+              // Calculate total P&L from imported trades
+              const totalPnL = importedTrades.reduce((sum, t) => sum + (t.pnl || 0), 0);
+              // Set balance to starting balance + all trade P&L
+              const calculatedBalance = startingBalance + totalPnL;
+              setBalance(calculatedBalance);
+              setBalanceInput(calculatedBalance.toString());
             }
 
             // Add imported trades with account ID
