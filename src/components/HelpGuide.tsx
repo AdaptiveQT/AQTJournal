@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, BookOpen, Search, ChevronRight, Home, Zap, BarChart2, Settings, HelpCircle } from 'lucide-react';
+import { X, BookOpen, Search, ChevronRight, Zap, BarChart2, Settings, HelpCircle, Upload, Database, Target, TrendingUp } from 'lucide-react';
 
 interface HelpGuideProps {
     isOpen: boolean;
@@ -16,10 +16,10 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
 
     const sections = [
         { id: 'quick-start', title: 'Quick Start', icon: Zap },
-        { id: 'setup', title: 'First Time Setup', icon: Settings },
-        { id: 'modes', title: 'Choosing Your Mode', icon: BarChart2 },
-        { id: 'flip-mode', title: 'Flip Mode Guide', icon: Zap },
-        { id: 'pro-mode', title: 'Pro Mode Guide', icon: BarChart2 },
+        { id: 'setup', title: 'Account Setup', icon: Settings },
+        { id: 'analytics', title: 'Analytics Dashboard', icon: BarChart2 },
+        { id: 'import', title: 'Import Trades', icon: Upload },
+        { id: 'modes', title: 'Flip vs Pro Mode', icon: Target },
         { id: 'tips', title: 'Tips for Success', icon: HelpCircle },
     ];
 
@@ -28,42 +28,134 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
             title: 'Quick Start (3 Steps)',
             sections: [
                 {
-                    subtitle: '',
+                    subtitle: 'Get Started in 60 Seconds',
                     content: [
-                        '1. **Open the app** - You\'re already here!',
-                        '2. **Choose your mode** - Click "Flip Mode" for simplified beginner experience, or stay in "Pro Mode" for full features',
-                        '3. **Start trading** - Log your first trade and track your journey!',
+                        '**1. Set Your Account Balance** - First thing you\'ll see is the account setup modal',
+                        '**2. Load Data** - Choose Demo Data (100 sample trades) or Import from MT4/MT5',
+                        '**3. Explore Analytics** - See Expectancy, Session Heatmaps, and R-Multiple charts',
+                    ]
+                },
+                {
+                    subtitle: 'New User Checklist',
+                    content: [
+                        '✓ Add your first trade (or load demo data)',
+                        '✓ Tag a setup type (Breakout, Pullback, etc.)',
+                        '✓ View your analytics dashboard',
+                        '',
+                        '💡 **Tip**: Complete all 3 steps to unlock the full experience!'
                     ]
                 }
             ]
         },
         'setup': {
-            title: 'First Time Setup',
+            title: 'Account Setup',
             sections: [
                 {
-                    subtitle: 'Step 1: Sign In (Optional but Recommended)',
+                    subtitle: 'Setting Your Balance',
                     content: [
-                        '**Start Anonymously** - Data saves to browser only',
-                        '**Sign in with Google** - Data syncs across all devices',
-                        '**Sign in with Twitter** - Same benefits as Google',
+                        'Your account balance is critical for:',
+                        '**Risk Calculations** - % risk per trade',
+                        '**Position Sizing** - Lot size recommendations',
+                        '**Performance Metrics** - ROI tracking',
                         '',
-                        '💡 **Tip**: If you start anonymously and later sign in, your data will be preserved!'
+                        '💡 Use the quick-select buttons: $1K, $5K, $10K, $25K, $50K, $100K'
                     ]
                 },
                 {
-                    subtitle: 'Step 2: Initial Configuration (Pro Mode Only)',
+                    subtitle: 'Sign In Options',
                     content: [
-                        '**Balance** - Your starting account balance (default: $1000)',
-                        '**Broker** - Select from IC Markets, Pepperstone, HankoTrade, Coinexx, or Prop Firm',
-                        '**Risk Mode** - SAFE (50% position size) or AGGR (100% position size)',
+                        '**Anonymous** - Data saves to browser only',
+                        '**Google Sign-In** - Syncs across all devices',
+                        '**Twitter Sign-In** - Same sync benefits',
                         '',
-                        '⚠️ **Beginners**: Skip this by switching to Flip Mode!'
+                        '⚠️ If you start anonymously and later sign in, your data is preserved!'
+                    ]
+                }
+            ]
+        },
+        'analytics': {
+            title: 'Analytics Dashboard',
+            sections: [
+                {
+                    subtitle: 'Expectancy by Setup',
+                    content: [
+                        'Shows the statistical edge of each trading setup:',
+                        '**Formula**: E = (Win% × Avg Win) - (Loss% × Avg Loss)',
+                        '**Positive Expectancy** = You have an edge',
+                        '**Negative Expectancy** = Review or drop this setup',
+                        '',
+                        '💡 Focus trades on your highest expectancy setups!'
+                    ]
+                },
+                {
+                    subtitle: 'Session Heatmap',
+                    content: [
+                        'Win rate visualization across trading sessions:',
+                        '**Asia/Tokyo** - 02:00-06:00 UTC',
+                        '**London** - 08:00-12:00 UTC',
+                        '**New York** - 14:00-18:00 UTC',
+                        '',
+                        'Color coding: Green = >55% win rate, Red = <45%'
+                    ]
+                },
+                {
+                    subtitle: 'R-Multiple ECDF',
+                    content: [
+                        'Cumulative distribution of your trade outcomes:',
+                        '**Median (P50)** - Your typical trade result',
+                        '**P(R ≤ -1)** - Probability of full loss',
+                        '**P(R ≥ 2)** - Probability of 2R+ winners',
+                        '',
+                        '💡 A positive P50 means you have a statistical edge!'
+                    ]
+                },
+                {
+                    subtitle: 'Calendar View',
+                    content: [
+                        'Visual trading calendar showing:',
+                        '**Green days** - Profitable trading days',
+                        '**Red days** - Loss days',
+                        '**Win/Loss count** - Daily breakdown',
+                        '',
+                        'Navigate months with arrow buttons or click "Today"'
+                    ]
+                }
+            ]
+        },
+        'import': {
+            title: 'Import Trades',
+            sections: [
+                {
+                    subtitle: 'Supported Formats',
+                    content: [
+                        '**CSV files** - Comma, semicolon, or tab separated',
+                        '**MT4/MT5 HTML** - Trade history export',
+                        '**TXT files** - Text-based trade data',
+                    ]
+                },
+                {
+                    subtitle: 'Import Wizard Steps',
+                    content: [
+                        '**1. Upload** - Drag & drop or click to select file',
+                        '**2. Map Columns** - Auto-detected, manually adjust if needed',
+                        '**3. Validate** - Review errors and warnings',
+                        '**4. Import** - Confirm and add to your journal',
+                        '',
+                        '💡 Required fields: Symbol, Direction, Entry, P&L'
+                    ]
+                },
+                {
+                    subtitle: 'Common Issues',
+                    content: [
+                        '**Missing columns** - Ensure headers match (Pair, Direction, Entry, PnL)',
+                        '**Date format** - Use YYYY-MM-DD or MM/DD/YYYY',
+                        '**Direction values** - Use Long/Short, Buy/Sell, or 1/-1',
                     ]
                 }
             ]
         },
         'modes': {
-            title: 'Choosing Your Mode',
+            title: 'Flip Mode vs Pro Mode',
             sections: [
                 {
                     subtitle: 'Flip Mode 🚀',
@@ -71,118 +163,28 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                         '**Best For**: Beginners, Small Accounts',
                         '**Interface**: Simplified and focused',
                         '**Daily Trade Limit**: 3 trades/day',
-                        '**Daily Goal Lock**: Mandatory (stops you when goal hit)',
-                        '**Configuration**: Hidden (auto-safe mode)',
-                        '**Readiness Check**: Yes (daily checklist)',
+                        '**Daily Goal Lock**: Stops trading when goal reached',
+                        '**Readiness Check**: Morning checklist before trading',
                     ]
                 },
                 {
                     subtitle: 'Pro Mode 📊',
                     content: [
                         '**Best For**: Experienced Traders',
-                        '**Interface**: Full-featured with all analytics',
-                        '**Daily Trade Limit**: Unlimited* (*10 for free, unlimited for Pro)',
-                        '**Daily Goal Lock**: None',
-                        '**Configuration**: Fully customizable',
-                        '**Analytics**: Deep setup performance charts',
+                        '**Interface**: Full analytics dashboard',
+                        '**Trade Limit**: Unlimited',
+                        '**Features**: Expectancy charts, Session heatmaps, Import wizard',
+                        '**Tier System**: 9 levels from Survival to Legend',
                     ]
                 },
                 {
                     subtitle: 'How to Switch',
                     content: [
-                        'Look for the mode toggle button in the **top-right header**',
-                        '**Flip Mode**: Blue/purple gradient with ⚡ icon',
+                        'Click the mode toggle in the **top-right header**',
+                        '**Flip Mode**: Blue gradient with ⚡ icon',
                         '**Pro Mode**: Gray button with 📊 icon',
                         '',
-                        'Click to toggle anytime. Your preference is saved automatically.'
-                    ]
-                }
-            ]
-        },
-        'flip-mode': {
-            title: 'Flip Mode Guide',
-            sections: [
-                {
-                    subtitle: '1. Morning Readiness Check ✅',
-                    content: [
-                        'First time each day, you\'ll see a checklist:',
-                        '✓ Did you sleep 7+ hours?',
-                        '✓ Have you reviewed yesterday\'s trades?',
-                        '✓ Do you know your trading plan?',
-                        '✓ Are you emotionally neutral?',
-                        '',
-                        '💡 You cannot trade until you check all required boxes'
-                    ]
-                },
-                {
-                    subtitle: '2. Log Your Trades 📝',
-                    content: [
-                        '**Pair**: Currency pair (e.g., EURUSD)',
-                        '**Direction**: Long or Short',
-                        '**Entry**: Your entry price',
-                        '**Exit**: Your exit price',
-                        '**Setup**: Trade type (Breakout, Reversal, etc.)',
-                        '**Emotion**: How you felt (Calm, FOMO, etc.)',
-                        '',
-                        '⚠️ **Limit**: Max 3 trades per day'
-                    ]
-                },
-                {
-                    subtitle: '3. Protection Systems 🛡️',
-                    content: [
-                        '**Daily Goal Lock** - When you hit your goal, green celebration appears. Only option: "I\'m Done For Today" (logs you out)',
-                        '',
-                        '**Max Loss Warning** - When you lose 5% in one day, red warning appears. You can override, but it\'s discouraged.',
-                        '',
-                        '**Why?** Prevents overtrading and revenge trading'
-                    ]
-                },
-                {
-                    subtitle: '4. Track Your Progress 📈',
-                    content: [
-                        '**Flip Progress** - Visual bar from Start → Current → Target',
-                        '**Compound Calculator** - See how daily % gains compound',
-                        '**Actionable Insight** - Shows your best performing setup',
-                    ]
-                }
-            ]
-        },
-        'pro-mode': {
-            title: 'Pro Mode Guide',
-            sections: [
-                {
-                    subtitle: 'Configuration Section ⚙️',
-                    content: [
-                        '**Balance** - Current account size (editable anytime)',
-                        '**Broker** - Choose from 5 supported brokers',
-                        '**Risk Mode** - SAFE (50%) or AGGR (100%)',
-                    ]
-                },
-                {
-                    subtitle: 'Tier System 📊',
-                    content: [
-                        'Your account progresses through 9 tiers:',
-                        '**SURVIVAL** ($10-$19) - 2 pairs',
-                        '**BUILDING** ($20-$49) - 3 pairs',
-                        '**SCALING** ($50-$99) - 4 pairs',
-                        '**GROWTH** ($100-$249) - 5 pairs',
-                        '**EXPANSION** ($250-$499) - 6 pairs',
-                        '**ADVANCED** ($500-$999) - 7 pairs',
-                        '**MASTERY** ($1,000-$2,499) - 8 pairs',
-                        '**ELITE** ($2,500-$4,999) - 10 pairs',
-                        '**LEGEND** ($5,000+) - 12 pairs',
-                        '',
-                        'Each tier auto-calculates your position size and risk.'
-                    ]
-                },
-                {
-                    subtitle: 'Analytics 📈',
-                    content: [
-                        '**Setup Performance Chart** - Bar chart showing win rate by setup',
-                        '**Full Trade History** - View all trades, not just today\'s',
-                        '**Export Reports** - Generate .txt performance reports',
-                        '',
-                        '🔒 Requires Pro subscription ($15/month)'
+                        'Your preference is saved automatically.'
                     ]
                 }
             ]
@@ -191,32 +193,30 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
             title: 'Tips for Success',
             sections: [
                 {
-                    subtitle: 'For Flip Mode Users',
+                    subtitle: 'Trading Psychology',
                     content: [
-                        '✓ **Respect the Daily Goal Lock** - When it appears, STOP trading',
-                        '✓ **Don\'t Override Max Loss** - If you hit 5%, step away',
-                        '✓ **Complete Readiness Check Honestly** - Trading tired = bad decisions',
-                        '✓ **Focus on Your Best Setup** - Double down on what works',
-                        '✓ **Set Realistic Goals** - 1-2% daily is more sustainable than 5%',
+                        '✓ **Log emotions honestly** - Patterns reveal trading psychology',
+                        '✓ **Respect daily limits** - Overtrading destroys accounts',
+                        '✓ **Review weekly** - What setups are working?',
+                        '✓ **Focus on R-multiples** - Not just win/loss',
                     ]
                 },
                 {
-                    subtitle: 'For Pro Mode Users',
+                    subtitle: 'Using Analytics',
                     content: [
-                        '✓ **Track Your Tiers** - Each tier doubles earning potential',
-                        '✓ **Use Safe Mode During Drawdowns** - Protect capital after 2 red days',
-                        '✓ **Review Analytics Weekly** - Eliminate losing setups',
-                        '✓ **Tag Emotions Honestly** - Your data reveals patterns',
-                        '✓ **Export Reports Monthly** - Track long-term progress',
+                        '✓ **Drop negative expectancy setups** - Data doesn\'t lie',
+                        '✓ **Trade your best sessions** - Use the heatmap',
+                        '✓ **Target 2R+ winners** - Let winners run',
+                        '✓ **Cut losers at 1R** - Protect your capital',
                     ]
                 },
                 {
-                    subtitle: 'General Tips',
+                    subtitle: 'Journal Best Practices',
                     content: [
-                        '✓ **Be honest with trade tags** - Accurate data = better insights',
-                        '✓ **Don\'t edit trades after logging** - First log is true log',
-                        '✓ **Review yesterday\'s trades daily** - Learn from wins and losses',
-                        '✓ **Upgrade to Pro for unlimited trades** - Free tier: 10 trades, Pro: unlimited',
+                        '✓ **Log immediately** - Don\'t wait until end of day',
+                        '✓ **Be consistent** - Every trade, every time',
+                        '✓ **Use notes** - Write what you learned',
+                        '✓ **Tag accurately** - Setup, emotion, session',
                     ]
                 }
             ]
@@ -227,9 +227,9 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
 
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-hidden">
-            <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl">
+            <div className="bg-slate-900 border-2 border-blue-500 rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/10">
+                <div className="flex items-center justify-between p-5 border-b border-white/10">
                     <div className="flex items-center gap-3">
                         <BookOpen size={28} className="text-blue-400" />
                         <h2 className="text-2xl font-bold text-white">AQT User Guide</h2>
@@ -244,16 +244,16 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
 
                 <div className="flex flex-1 overflow-hidden">
                     {/* Sidebar */}
-                    <div className="w-64 border-r border-white/10 p-4 overflow-y-auto">
-                        <div className="mb-4">
+                    <div className="w-56 border-r border-white/10 p-3 overflow-y-auto">
+                        <div className="mb-3">
                             <div className="relative">
-                                <Search size={18} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
+                                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
                                 <input
                                     type="text"
                                     placeholder="Search..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-3 py-2 bg-slate-800 rounded-lg text-white text-sm border border-slate-600 focus:border-blue-500 outline-none"
+                                    className="w-full pl-9 pr-3 py-2 bg-slate-800 rounded-lg text-white text-sm border border-slate-600 focus:border-blue-500 outline-none"
                                 />
                             </div>
                         </div>
@@ -265,15 +265,15 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                                     <button
                                         key={section.id}
                                         onClick={() => setActiveSection(section.id)}
-                                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-left ${activeSection === section.id
-                                                ? 'bg-blue-600 text-white'
-                                                : 'text-slate-300 hover:bg-white/5'
+                                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-left ${activeSection === section.id
+                                            ? 'bg-blue-600 text-white'
+                                            : 'text-slate-300 hover:bg-white/5'
                                             }`}
                                     >
-                                        <Icon size={18} />
+                                        <Icon size={16} />
                                         <span className="text-sm font-medium">{section.title}</span>
                                         {activeSection === section.id && (
-                                            <ChevronRight size={16} className="ml-auto" />
+                                            <ChevronRight size={14} className="ml-auto" />
                                         )}
                                     </button>
                                 );
@@ -282,16 +282,16 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Content */}
-                    <div className="flex-1 overflow-y-auto p-8">
-                        <h1 className="text-3xl font-bold text-white mb-6">{currentContent.title}</h1>
+                    <div className="flex-1 overflow-y-auto p-6">
+                        <h1 className="text-2xl font-bold text-white mb-5">{currentContent.title}</h1>
 
-                        <div className="space-y-8">
+                        <div className="space-y-6">
                             {currentContent.sections.map((section, idx) => (
                                 <div key={idx}>
                                     {section.subtitle && (
-                                        <h2 className="text-xl font-bold text-blue-400 mb-3">{section.subtitle}</h2>
+                                        <h2 className="text-lg font-bold text-blue-400 mb-2">{section.subtitle}</h2>
                                     )}
-                                    <div className="space-y-2 text-slate-300">
+                                    <div className="space-y-1.5 text-slate-300 text-sm">
                                         {section.content.map((line, lineIdx) => {
                                             if (line === '') {
                                                 return <div key={lineIdx} className="h-2" />;
@@ -316,9 +316,9 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                         </div>
 
                         {/* Footer Note */}
-                        <div className="mt-12 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                        <div className="mt-8 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
                             <p className="text-blue-200 text-sm">
-                                💡 <strong>Need more help?</strong> Check the full USER_GUIDE.md file in your project folder for detailed information, FAQs, and keyboard shortcuts.
+                                💡 <strong>New Features:</strong> Expectancy by Setup • Session Heatmaps • R-Multiple ECDF • CSV/MT4 Import • Calendar View
                             </p>
                         </div>
                     </div>

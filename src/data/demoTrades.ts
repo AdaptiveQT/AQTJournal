@@ -15,7 +15,9 @@ const SESSIONS = ['London', 'NewYork', 'Tokyo'] as const;
 // Generate deterministic but realistic trades
 function generateDemoTrades(): Trade[] {
     const trades: Trade[] = [];
-    const baseDate = new Date('2024-11-01');
+    // Use current month minus 30 days to ensure trades show in calendar
+    const now = new Date();
+    const baseDate = new Date(now.getFullYear(), now.getMonth(), 1);
 
     // Seed for reproducibility
     let seed = 12345;
