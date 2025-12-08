@@ -94,6 +94,7 @@ import EmptyState, { DemoDataBanner, DemoModeIndicator } from "./EmptyState";
 import ImportWizard from "./Import/ImportWizard";
 import WelcomeModal from "./Onboarding/WelcomeModal";
 import OnboardingChecklist from "./Onboarding/OnboardingChecklist";
+import FlipModeSettings from "./FlipMode/FlipModeSettings";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -1807,6 +1808,7 @@ const AQTApp: React.FC = () => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(true);
   const [hasViewedAnalytics, setHasViewedAnalytics] = useState(false);
+  const [showFlipModeSettings, setShowFlipModeSettings] = useState(false);
 
   // Refs
   const entryRef = useRef<HTMLInputElement>(null);
@@ -2434,14 +2436,38 @@ const AQTApp: React.FC = () => {
 
   if (isFlipMode) {
     return (
-      <FlipMode
-        balance={balance}
-        trades={trades}
-        settings={globalSettings}
-        onAddTrade={handleAddTradeForFlipMode}
-        onSwitchMode={() => setIsFlipMode(false)}
-        onOpenSettings={() => setShowNewSettingsManager(true)}
-      />
+      <>
+        <FlipMode
+          balance={balance}
+          trades={trades}
+          settings={globalSettings}
+          onAddTrade={handleAddTradeForFlipMode}
+          onSwitchMode={() => setIsFlipMode(false)}
+          onOpenSettings={() => setShowFlipModeSettings(true)}
+        />
+
+        {/* Flip Mode Settings Modal */}
+        <FlipModeSettings
+          isOpen={showFlipModeSettings}
+          onClose={() => setShowFlipModeSettings(false)}
+          balance={balance}
+          onSetBalance={(newBalance) => {
+            setBalance(newBalance);
+            setBalanceInput(newBalance.toString());
+          }}
+          settings={{
+            dailyGrowth: globalSettings.dailyGrowth || 5,
+            maxDailyLoss: globalSettings.maxDailyLoss || 5,
+            maxTradesPerDay: globalSettings.maxTradesPerDay || 3,
+            startBalance: globalSettings.startBalance || 100,
+            targetBalance: globalSettings.targetBalance || 1000,
+          }}
+          onUpdateSettings={(newSettings) => {
+            setGlobalSettings(prev => ({ ...prev, ...newSettings }));
+          }}
+          darkMode={true}
+        />
+      </>
     );
   }
 
