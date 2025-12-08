@@ -82,6 +82,9 @@ import TradeSearch, { SearchFilters } from "./TradeSearch/TradeSearch";
 import VoiceNoteRecorder from "./VoiceNoteRecorder";
 import NotificationManager, { Notification as AppNotification, createNotification } from "./Notifications/NotificationManager";
 import SmartInsights from "./Analytics/SmartInsights";
+import ExpectancyChart from "./Analytics/ExpectancyChart";
+import SessionHeatmap from "./Analytics/SessionHeatmap";
+import RMultipleECDF from "./Analytics/RMultipleECDF";
 import StrategyLibrary from "./Strategies/StrategyLibrary";
 import GoalTracker from "./Goals/GoalTracker";
 import ShortcutManager, { createDefaultShortcuts } from "./ShortcutManager";
@@ -2842,6 +2845,19 @@ const AQTApp: React.FC = () => {
           {validationErrors.length > 0 && (<ul className="mt-3 text-sm text-red-600 list-disc list-inside">{validationErrors.map((e, i) => <li key={i}>{e}</li>)}</ul>)}
           <div className="mt-4 flex gap-3"><button type="button" onClick={addTrade} disabled={!isFormValid} className={`flex-1 font-bold py-3 rounded-lg text-lg shadow-xl ${isFormValid ? "bg-blue-600 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"}`}>{isFormValid ? "Log Trade" : "Enter Details"}</button><button type="button" onClick={() => setNewTrade(initialTradeState)} className="px-4 py-3 rounded-lg bg-slate-200 dark:bg-slate-800">Reset</button></div>
         </CollapsibleSection>
+
+        {/* SETUP & SESSION ANALYTICS */}
+        {trades.length >= 5 && (
+          <CollapsibleSection title="Setup & Session Analytics" icon={BarChart2} defaultOpen={false}>
+            <div className="space-y-6">
+              <ExpectancyChart trades={trades} darkMode={darkMode} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <SessionHeatmap trades={trades} darkMode={darkMode} />
+                <RMultipleECDF trades={trades} darkMode={darkMode} />
+              </div>
+            </div>
+          </CollapsibleSection>
+        )}
 
         {/* CHARTS */}
         {trades.length > 0 && (
