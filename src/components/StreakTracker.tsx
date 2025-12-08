@@ -7,12 +7,14 @@ interface StreakTrackerProps {
     currentStreak: number;
     longestStreak: number;
     lastProfitableDay: string | null;
+    showDetails?: boolean;
 }
 
 const StreakTracker: React.FC<StreakTrackerProps> = ({
     currentStreak,
     longestStreak,
-    lastProfitableDay
+    lastProfitableDay,
+    showDetails = false
 }) => {
     const getStreakEmoji = (streak: number) => {
         if (streak >= 10) return '🔥🔥🔥';
@@ -28,7 +30,7 @@ const StreakTracker: React.FC<StreakTrackerProps> = ({
                 <h3 className="text-lg font-bold text-white">Profit Streak</h3>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid ${showDetails ? 'grid-cols-2' : 'grid-cols-1'} gap-4`}>
                 {/* Current Streak */}
                 <div className="text-center p-4 bg-white/5 rounded-lg border border-white/10">
                     <div className="text-sm text-slate-400 mb-1">Current</div>
@@ -43,25 +45,27 @@ const StreakTracker: React.FC<StreakTrackerProps> = ({
                     )}
                 </div>
 
-                {/* Longest Streak */}
-                <div className="text-center p-4 bg-white/5 rounded-lg border border-white/10">
-                    <div className="text-sm text-slate-400 mb-1 flex items-center justify-center gap-1">
-                        <Trophy size={12} />
-                        Best
-                    </div>
-                    <div className="text-4xl font-bold text-yellow-400 mb-1">
-                        {longestStreak}
-                    </div>
-                    <div className="text-2xl">{getStreakEmoji(longestStreak)}</div>
-                    {longestStreak > 0 && (
-                        <div className="text-xs text-slate-500 mt-2">
-                            personal record
+                {/* Longest Streak (Optional) */}
+                {showDetails && (
+                    <div className="text-center p-4 bg-white/5 rounded-lg border border-white/10">
+                        <div className="text-sm text-slate-400 mb-1 flex items-center justify-center gap-1">
+                            <Trophy size={12} />
+                            Best
                         </div>
-                    )}
-                </div>
+                        <div className="text-4xl font-bold text-yellow-400 mb-1">
+                            {longestStreak}
+                        </div>
+                        <div className="text-2xl">{getStreakEmoji(longestStreak)}</div>
+                        {longestStreak > 0 && (
+                            <div className="text-xs text-slate-500 mt-2">
+                                personal record
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {lastProfitableDay && (
+            {showDetails && lastProfitableDay && (
                 <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20 text-center">
                     <div className="text-xs text-blue-200">
                         <TrendingUp size={12} className="inline mr-1" />

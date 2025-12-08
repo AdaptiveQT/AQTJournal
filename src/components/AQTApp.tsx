@@ -50,7 +50,8 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
-  MoreVertical
+  MoreVertical,
+  Image as ImageIcon
 } from "lucide-react";
 import {
   LineChart,
@@ -70,6 +71,30 @@ import HelpGuide from "./HelpGuide";
 import RiskRewardCalculator from "./RiskRewardCalculator";
 import WeeklyGoals from "./WeeklyGoals";
 import StreakTracker from "./StreakTracker";
+import { useStreakCalculator } from "../hooks/useStreakCalculator";
+import AnalyticsDashboard from "./Analytics/AnalyticsDashboard";
+
+// Phase 1-5: New Component Imports
+import SettingsManager from "./Settings/SettingsManager";
+import BackupManager from "./BackupManager";
+import TagManager from "./Tags/TagManager";
+import TradeSearch, { SearchFilters } from "./TradeSearch/TradeSearch";
+import VoiceNoteRecorder from "./VoiceNoteRecorder";
+import NotificationManager, { Notification as AppNotification, createNotification } from "./Notifications/NotificationManager";
+import SmartInsights from "./Analytics/SmartInsights";
+import StrategyLibrary from "./Strategies/StrategyLibrary";
+import GoalTracker from "./Goals/GoalTracker";
+import ShortcutManager, { createDefaultShortcuts } from "./ShortcutManager";
+import FocusMode from "./FocusMode";
+import InstallPrompt from "./InstallPrompt";
+
+// Utilities
+import { InsightsEngine } from "../utils/insightsEngine";
+import { registerServiceWorker, setupInstallPrompt } from "../utils/pwa";
+
+// Types
+import { Tag } from "../types/tags";
+import { Strategy } from "../types/strategies";
 
 /* ---------------- Firebase (inlined) ---------------- */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
@@ -95,8 +120,7 @@ import {
   onSnapshot,
   type Firestore,
 } from "firebase/firestore";
-
-// Single APP_ID constant (used in document paths)
+import { getStorage, ref, uploadBytes, getDownloadURL, type FirebaseStorage } from "firebase/storage";
 const APP_ID = "aqt-journal";
 
 // Pull config from env; if missing, we will run in Local Mode safely.
@@ -113,6 +137,7 @@ const firebaseConfig = {
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
+let storage: FirebaseStorage | undefined;
 let firebaseReady = false;
 
 try {
@@ -121,6 +146,7 @@ try {
     app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
+    storage = getStorage(app);
     firebaseReady = true;
   } else {
     console.warn(
@@ -186,6 +212,7 @@ type Trade = {
   setup: string;
   emotion: string;
   notes: string;
+  imageUrl?: string;
 };
 type GlobalSettings = {
   pipValue: number;
@@ -196,6 +223,8 @@ type GlobalSettings = {
   maxTradesPerDay?: number;
   startBalance?: number;
   targetBalance?: number;
+  showWeeklyGoals?: boolean;
+  showStreakDetails?: boolean;
 };
 
 type PairMeta = { placeholder: string; step: number; multiplier: number; isYen?: boolean; isGold?: boolean; isCrypto?: boolean; isIndex?: boolean };
@@ -999,27 +1028,87 @@ const TradeNotesModal: React.FC<{
   trade: Trade | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (tradeId: string, notes: string) => void;
-}> = ({ trade, isOpen, onClose, onSave }) => {
+  onSave: (tradeId: string, data: { notes: string; imageUrl?: string }) => Promise<void>;
+  onUpload: (file: File) => Promise<string>;
+}> = ({ trade, isOpen, onClose, onSave, onUpload }) => {
   const [notes, setNotes] = useState(trade?.notes ?? "");
-  useEffect(() => setNotes(trade?.notes ?? ""), [trade]);
+  const [imageUrl, setImageUrl] = useState(trade?.imageUrl ?? "");
+  const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    setNotes(trade?.notes ?? "");
+    setImageUrl(trade?.imageUrl ?? "");
+  }, [trade]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setIsUploading(true);
+      try {
+        const url = await onUpload(e.target.files[0]);
+        setImageUrl(url);
+      } catch (error) {
+        alert("Upload failed. Try again.");
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
   if (!isOpen || !trade) return null;
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full border border-slate-200 dark:border-white/10 shadow-xl">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 rounded-lg p-6 max-w-md w-full border border-slate-200 dark:border-white/10 shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold dark:text-white">Trade Notes: {trade.pair}</h3>
+          <h3 className="text-lg font-bold dark:text-white">Trade Details: {trade.pair}</h3>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-700 dark:hover:text-white"><X size={18} /></button>
         </div>
+
+        {/* Image Section */}
+        <div className="mb-4">
+          <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Screenshot</label>
+          {imageUrl ? (
+            <div className="relative group">
+              <img src={imageUrl} alt="Trade Screenshot" className="w-full h-48 object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+              <button
+                onClick={() => setImageUrl("")}
+                className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove Image"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ) : (
+            <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-6 text-center hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors relative">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={isUploading}
+              />
+              {isUploading ? (
+                <div className="text-blue-500 font-bold animate-pulse">Uploading...</div>
+              ) : (
+                <div className="text-slate-500 dark:text-slate-400">
+                  <Upload className="mx-auto mb-2 opacity-50" size={24} />
+                  <span className="text-sm">Click to upload screenshot</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Notes</label>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          className="w-full h-40 p-3 border dark:border-white/10 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
-          placeholder="Add your analysis, lessons learned, emotions..."
+          className="w-full h-32 p-3 border dark:border-white/10 rounded-lg bg-white dark:bg-slate-900 focus:ring-2 focus:ring-blue-500 outline-none dark:text-white mb-4 text-sm"
+          placeholder="Add analysis, lessons, emotions..."
         />
-        <div className="flex justify-end gap-2 mt-4">
-          <button onClick={onClose} className="px-4 py-2 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors dark:text-white">Cancel</button>
-          <button onClick={() => onSave(trade.id, notes)} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">Save Notes</button>
+
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 rounded bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors dark:text-white text-sm font-bold">Cancel</button>
+          <button onClick={() => onSave(trade.id, { notes, imageUrl })} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors text-sm font-bold">Save Details</button>
         </div>
       </div>
     </div>
@@ -1039,7 +1128,7 @@ const SettingsDrawer: React.FC<{ isOpen: boolean; onClose: () => void; settings:
           <button onClick={onClose}><X className="dark:text-white" /></button>
         </div>
         <div className="space-y-6">
-          {(["pipValue", "stopLoss", "profitTarget", "dailyGrowth"] as (keyof GlobalSettings)[]).map((k) => (
+          {(["pipValue", "stopLoss", "profitTarget", "dailyGrowth"] as ("pipValue" | "stopLoss" | "profitTarget" | "dailyGrowth")[]).map((k) => (
             <div key={k}>
               <label className="block text-sm font-medium dark:text-slate-300 mb-1 capitalize">{k.replace(/([A-Z])/g, " $1")}</label>
               <input
@@ -1051,6 +1140,16 @@ const SettingsDrawer: React.FC<{ isOpen: boolean; onClose: () => void; settings:
               />
             </div>
           ))}
+          <div className="pt-4 border-t border-slate-200 dark:border-white/10 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={local.showWeeklyGoals} onChange={(e) => setLocal({ ...local, showWeeklyGoals: e.target.checked })} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+              <span className="text-sm font-medium dark:text-slate-300">Show Weekly/Monthly Goals</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" checked={local.showStreakDetails} onChange={(e) => setLocal({ ...local, showStreakDetails: e.target.checked })} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+              <span className="text-sm font-medium dark:text-slate-300">Show detailed streak info</span>
+            </label>
+          </div>
           <button onClick={() => { onSave(local); onClose(); }} className="w-full py-3 bg-blue-600 text-white rounded font-bold mt-4">Save Changes</button>
         </div>
       </div>
@@ -1134,7 +1233,8 @@ const FlipMode: React.FC<{
   settings: GlobalSettings;
   onAddTrade: (trade: Omit<Trade, 'id' | 'ts' | 'time' | 'date' | 'lots' | 'setup' | 'emotion' | 'notes'>) => void;
   onSwitchMode: () => void;
-}> = ({ balance, trades, settings, onAddTrade, onSwitchMode }) => {
+  onOpenSettings: () => void;
+}> = ({ balance, trades, settings, onAddTrade, onSwitchMode, onOpenSettings }) => {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
   const [showRulesCheck, setShowRulesCheck] = useState(true);
@@ -1152,6 +1252,7 @@ const FlipMode: React.FC<{
     { id: '4', text: 'I will follow my stop loss', checked: false },
     { id: '5', text: `Max ${settings.maxTradesPerDay || 3} trades today`, checked: false }
   ]);
+
 
   const todayKey = useMemo(() => localDayKey(new Date()), []);
   const todayTrades = useMemo(() => trades.filter(t => t.date === todayKey), [trades, todayKey]);
@@ -1178,6 +1279,64 @@ const FlipMode: React.FC<{
       setShowLossModal(true);
     }
   }, [todayPnl, dailyGoalAmount, maxDailyLossAmount, showGoalModal, showLossModal]);
+
+  // Smart Price Auto-fill
+  useEffect(() => {
+    const p = newTrade.pair.toUpperCase();
+    if (COMMON_PAIRS.includes(p)) {
+      const lastTrade = trades.find(t => t.pair === p);
+      if (lastTrade) {
+        // Use last exit (if closed) or entry as a proxy for current price
+        const price = lastTrade.exit || lastTrade.entry;
+        if (price) {
+          setNewTrade(prev => ({ ...prev, entry: String(price) }));
+        }
+      }
+    }
+  }, [newTrade.pair, trades]);
+
+  /* ---------------- HANDLERS ---------------- */
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const exportToCSV = (tradesToExport?: Trade[]) => {
+    const dataToExport = tradesToExport || trades;
+    if (dataToExport.length === 0) return;
+
+    // Header row
+    const headers = ['ID', 'Date', 'Time', 'Pair', 'Direction', 'Entry', 'Exit', 'PnL', 'Lots', 'Setup', 'Emotion', 'Notes', 'Screenshot'];
+
+    // Data rows
+    const rows = dataToExport.map(t => {
+      const safeNotes = t.notes?.replace(/"/g, '""') || '';
+      return [
+        t.id,
+        t.date,
+        t.time,
+        t.pair,
+        t.direction,
+        t.entry,
+        t.exit,
+        t.pnl,
+        t.lots,
+        t.setup,
+        t.emotion,
+        `"${safeNotes}"`,
+        t.imageUrl || ''
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `aqt_trades_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleAddTrade = () => {
     const entry = parseFloat(newTrade.entry);
@@ -1332,13 +1491,22 @@ const FlipMode: React.FC<{
             </h1>
             <p className="text-sm text-slate-400">Simple. Focused. Profitable.</p>
           </div>
-          <button
-            onClick={onSwitchMode}
-            className="px-4 py-2 bg-slate-800 rounded-lg text-sm hover:bg-slate-700 flex items-center gap-2"
-          >
-            <Eye size={16} />
-            Pro Mode
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onOpenSettings}
+              className="w-10 h-10 bg-slate-800 rounded-lg hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white"
+              title="Settings"
+            >
+              <SettingsIcon size={20} />
+            </button>
+            <button
+              onClick={onSwitchMode}
+              className="px-4 py-2 bg-slate-800 rounded-lg text-sm hover:bg-slate-700 flex items-center gap-2"
+            >
+              <Eye size={16} />
+              Pro Mode
+            </button>
+          </div>
         </div>
       </div>
 
@@ -1452,8 +1620,12 @@ const FlipMode: React.FC<{
                   placeholder="EURUSD"
                   value={newTrade.pair}
                   onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })}
+                  list="flip-pairs"
                   className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-white"
                 />
+                <datalist id="flip-pairs">
+                  {COMMON_PAIRS.map(p => <option key={p} value={p} />)}
+                </datalist>
               </div>
 
               <div>
@@ -1576,12 +1748,15 @@ const AQTApp: React.FC = () => {
     maxDailyLoss: 5,
     maxTradesPerDay: 3,
     startBalance: 100,
-    targetBalance: 1000
+    targetBalance: 1000,
+    showWeeklyGoals: true,
+    showStreakDetails: false
   });
   const [isFlipMode, setIsFlipMode] = useState(false);
 
   // Component Integration State
   const [showHelp, setShowHelp] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [showRRCalculator, setShowRRCalculator] = useState(false);
   const [weeklyGoal, setWeeklyGoal] = useState(200);
   const [monthlyGoal, setMonthlyGoal] = useState(800);
@@ -1594,6 +1769,24 @@ const AQTApp: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const initialTradeState: TradeInput = useMemo(() => ({ pair: "", direction: "Long", entry: "", exit: "", lots: "", setup: "Breakout", emotion: "Calm", notes: "" }), []);
   const [newTrade, setNewTrade] = useState<TradeInput>(initialTradeState);
+
+  // ============= PHASE 1-5: NEW STATE VARIABLES =============
+  // Tags System
+  const [tags, setTags] = useState<Tag[]>([]);
+  // Strategies System
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
+  // Notifications System
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  // Search & Filters
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>({});
+  // UI State
+  const [showFocusMode, setShowFocusMode] = useState(false);
+  const [showNewSettingsManager, setShowNewSettingsManager] = useState(false);
+  const [showBackupManager, setShowBackupManager] = useState(false);
+  const [showTagManager, setShowTagManager] = useState(false);
+  const [showStrategyLibrary, setShowStrategyLibrary] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [showGoalTracker, setShowGoalTracker] = useState(false);
 
   // Refs
   const entryRef = useRef<HTMLInputElement>(null);
@@ -1796,6 +1989,11 @@ const AQTApp: React.FC = () => {
 
   const filteredTotal = useMemo(() => filteredTrades.reduce((s, t) => s + t.pnl, 0), [filteredTrades]);
 
+  // Daily Streak Integration
+  const streakData = useStreakCalculator(trades);
+
+  // todayKey and todayPnl already defined above (line 1947-1948)
+
   const sessionOpen = (tz: string, openH: number, closeH: number) => {
     const nowTz = new Date(currentTime.toLocaleString('en-US', { timeZone: tz }));
     const h = nowTz.getHours();
@@ -1934,12 +2132,22 @@ const AQTApp: React.FC = () => {
     }
   }, []);
 
-  const saveNotes = useCallback(async (id: string, notes: string) => {
-    setTrades((p) => p.map((t) => (t.id === id ? { ...t, notes } : t)));
+  const uploadTradeImage = async (file: File): Promise<string> => {
+    if (!firebaseReady || !storage || !user) {
+      if (typeof window !== "undefined") alert("Cloud storage not linked.");
+      throw new Error("Cloud storage not linked");
+    }
+    const storageRef = ref(storage, `trades/${user.uid}/${Date.now()}_${file.name}`);
+    await uploadBytes(storageRef, file);
+    return await getDownloadURL(storageRef);
+  };
+
+  const saveNotes = useCallback(async (id: string, data: { notes: string; imageUrl?: string }) => {
+    setTrades((p) => p.map((t) => (t.id === id ? { ...t, notes: data.notes, imageUrl: data.imageUrl || t.imageUrl } : t)));
     setNotesModalTradeId(null);
     if (firebaseReady && db && user) {
       try {
-        await setDoc(doc(db, 'artifacts', APP_ID, 'users', user.uid, 'trades', id), { notes }, { merge: true });
+        await setDoc(doc(db, 'artifacts', APP_ID, 'users', user.uid, 'trades', id), { notes: data.notes, ...(data.imageUrl ? { imageUrl: data.imageUrl } : {}) }, { merge: true });
       } catch (e) {
         console.error("Failed to update notes", e);
       }
@@ -1951,6 +2159,29 @@ const AQTApp: React.FC = () => {
     if (typeof window !== "undefined") {
       window.print();
     }
+  };
+
+  const exportToCSV = (tradesToExport?: Trade[]) => {
+    const dataToExport = tradesToExport || trades;
+    if (dataToExport.length === 0) return;
+
+    const headers = ['ID', 'Date', 'Time', 'Pair', 'Direction', 'Entry', 'Exit', 'PnL', 'Lots', 'Setup', 'Emotion', 'Notes', 'Screenshot'];
+    const rows = dataToExport.map(t => {
+      const safeNotes = t.notes?.replace(/"/g, '""') || '';
+      return [
+        t.id, t.date, t.time, t.pair, t.direction, t.entry, t.exit, t.pnl, t.lots, t.setup, t.emotion, `"${safeNotes}"`, t.imageUrl || ''
+      ].join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `aqt_trades_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const onRestore = (file: File) => {
@@ -2019,6 +2250,86 @@ const AQTApp: React.FC = () => {
     }
   };
 
+  // ============= PHASE 1-5: NEW HANDLERS =============
+
+  // Tag Handlers
+  const handleAddTag = useCallback((tag: Omit<Tag, 'id' | 'createdAt' | 'usageCount'>) => {
+    const newTag: Tag = {
+      ...tag,
+      id: Date.now().toString(),
+      createdAt: Date.now(),
+      usageCount: 0,
+    };
+    setTags(prev => [...prev, newTag]);
+  }, []);
+
+  const handleUpdateTag = useCallback((id: string, updates: Partial<Tag>) => {
+    setTags(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, []);
+
+  const handleDeleteTag = useCallback((id: string) => {
+    setTags(prev => prev.filter(t => t.id !== id));
+  }, []);
+
+  // Strategy Handlers
+  const handleAddStrategy = useCallback((strategy: Omit<Strategy, 'id' | 'totalTrades' | 'winningTrades' | 'losingTrades' | 'totalPnL' | 'averagePnL' | 'bestTrade' | 'worstTrade' | 'createdAt' | 'updatedAt'>) => {
+    const newStrategy: Strategy = {
+      ...strategy,
+      id: Date.now().toString(),
+      totalTrades: 0,
+      winningTrades: 0,
+      losingTrades: 0,
+      totalPnL: 0,
+      averagePnL: 0,
+      bestTrade: 0,
+      worstTrade: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    setStrategies(prev => [...prev, newStrategy]);
+  }, []);
+
+  const handleUpdateStrategy = useCallback((id: string, updates: Partial<Strategy>) => {
+    setStrategies(prev => prev.map(s => s.id === id ? { ...s, ...updates, updatedAt: Date.now() } : s));
+  }, []);
+
+  const handleDeleteStrategy = useCallback((id: string) => {
+    setStrategies(prev => prev.filter(s => s.id !== id));
+  }, []);
+
+  // Notification Handlers
+  const handleMarkRead = useCallback((id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  }, []);
+
+  const handleClearNotifications = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
+  const addNotification = useCallback((type: 'goal_reached' | 'max_loss_warning' | 'streak_milestone' | 'weekly_summary' | 'custom', title: string, message: string) => {
+    const notif = createNotification(type, title, message);
+    setNotifications(prev => [...prev, notif]);
+  }, []);
+
+  // Keyboard Shortcuts
+  const shortcuts = useMemo(() => createDefaultShortcuts({
+    onNewTrade: () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+    onSettings: () => setShowNewSettingsManager(true),
+    onBackup: () => setShowBackupManager(true),
+    onAnalytics: () => setShowInsights(true),
+    onHelp: () => setShowHelp(true),
+    onFocusMode: () => setShowFocusMode(prev => !prev),
+    onSearch: () => { }, // Focus search would be implemented here
+  }), []);
+
+  // PWA Setup
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      registerServiceWorker().catch(() => { });
+      setupInstallPrompt();
+    }
+  }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
@@ -2081,12 +2392,13 @@ const AQTApp: React.FC = () => {
         settings={globalSettings}
         onAddTrade={handleAddTradeForFlipMode}
         onSwitchMode={() => setIsFlipMode(false)}
+        onOpenSettings={() => setShowNewSettingsManager(true)}
       />
     );
   }
 
   return (
-    <div className={`min-h-screen font-sans overflow-x-hidden pb-12 transition-colors duration-300 ${darkMode ? "bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white" : "bg-white text-slate-800"}`}>
+    <div className={`min-h-screen font-sans overflow-x-hidden pb-12 transition-colors duration-300 ${darkMode ? "dark bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 text-white" : "bg-white text-slate-800"}`}>
       <style>{`
         @media print {
           body { background: white !important; color: black !important; }
@@ -2174,6 +2486,7 @@ const AQTApp: React.FC = () => {
             {/* Tools */}
             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200 dark:border-white/5">
               <button onClick={() => setShowHelp(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 transition-all" title="Help Guide"><HelpCircle size={18} /></button>
+              <button onClick={() => setShowAnalytics(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 transition-all" title="Analytics Dashboard"><BarChart2 size={18} /></button>
               <button onClick={() => setShowRRCalculator(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 transition-all" title="Risk/Reward Calculator"><Calculator size={18} /></button>
             </div>
 
@@ -2185,14 +2498,14 @@ const AQTApp: React.FC = () => {
 
             {/* More Menu */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
                 className={`p-2 rounded-full transition-all border ${isMoreMenuOpen ? 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600' : 'hover:bg-slate-100 dark:hover:bg-slate-800 border-transparent'}`}
                 title="More Options"
               >
                 <MoreVertical size={20} className="text-slate-600 dark:text-slate-400" />
               </button>
-              
+
               {isMoreMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setIsMoreMenuOpen(false)}></div>
@@ -2204,7 +2517,16 @@ const AQTApp: React.FC = () => {
                       }}
                       className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
                     >
-                      <Download size={16} /> Backup Data
+                      <Download size={16} /> Backup JSON
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        exportToCSV();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                    >
+                      <BarChart2 size={16} /> Export CSV
                     </button>
                     <label className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer">
                       <Upload size={16} /> Restore Data
@@ -2238,9 +2560,10 @@ const AQTApp: React.FC = () => {
 
         {/* STREAK TRACKER */}
         <StreakTracker
-          currentStreak={riskMetrics.currentStreak}
-          longestStreak={riskMetrics.bestStreak}
-          lastProfitableDay={trades.find(t => t.pnl > 0)?.date || null}
+          currentStreak={streakData.currentStreak}
+          longestStreak={streakData.longestStreak}
+          lastProfitableDay={streakData.lastProfitableDay}
+          showDetails={globalSettings.showStreakDetails}
         />
 
         {/* GOALS & BENCHMARKS */}
@@ -2263,13 +2586,15 @@ const AQTApp: React.FC = () => {
         <PerformanceMilestones trades={trades} balance={balance} />
 
         {/* WEEKLY & MONTHLY GOALS */}
-        <WeeklyGoals
-          trades={trades}
-          weeklyGoal={weeklyGoal}
-          monthlyGoal={monthlyGoal}
-          onUpdateWeeklyGoal={setWeeklyGoal}
-          onUpdateMonthlyGoal={setMonthlyGoal}
-        />
+        {globalSettings.showWeeklyGoals && (
+          <WeeklyGoals
+            trades={trades}
+            weeklyGoal={weeklyGoal}
+            monthlyGoal={monthlyGoal}
+            onUpdateWeeklyGoal={setWeeklyGoal}
+            onUpdateMonthlyGoal={setMonthlyGoal}
+          />
+        )}
 
         {/* CONFIGURATION */}
         <CollapsibleSection title="Configuration" icon={Shield}>
@@ -2450,7 +2775,7 @@ const AQTApp: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="col-span-2 md:col-span-1"><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Pair</label><input type="text" placeholder="EURUSD" value={newTrade.pair} list={listId} onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })} onKeyDown={(e) => e.key === "Enter" && entryRef.current?.focus()} className="w-full pl-8 pr-4 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg" /><datalist id={listId}>{COMMON_PAIRS.map((p) => <option key={p} value={p} />)}</datalist></div>
+            <div className="col-span-2 md:col-span-1"><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Pair</label><input type="text" placeholder="EURUSD" value={newTrade.pair} list={listId} onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })} onKeyDown={(e) => e.key === "Enter" && entryRef.current?.focus()} className="w-full pl-8 pr-4 py-3 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg" /><datalist id={listId}>{COMMON_PAIRS.map((p) => <option key={p} value={p} />)}</datalist></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Dir</label><select value={newTrade.direction} onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as Direction })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white"><option value="Long">Long</option><option value="Short">Short</option></select></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Entry</label><input ref={entryRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.entry} onChange={(e) => setNewTrade({ ...newTrade, entry: e.target.value })} onKeyDown={(e) => e.key === "Enter" && exitRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Exit</label><input ref={exitRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.exit} onChange={(e) => setNewTrade({ ...newTrade, exit: e.target.value })} onKeyDown={(e) => e.key === "Enter" && lotsRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
@@ -2492,7 +2817,7 @@ const AQTApp: React.FC = () => {
 
         {/* JOURNAL */}
         <CollapsibleSection title={`Journal (${trades.length})`} icon={Brain}>
-          <div className="flex flex-wrap gap-2 items-end mb-4">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-end mb-4">
             <input placeholder="Pair" list={listId} value={filters.pair} onChange={(e) => setFilters(f => ({ ...f, pair: e.target.value.toUpperCase() }))} className="px-2 py-1 rounded border dark:border-white/10 bg-white dark:bg-slate-900" />
             <select value={filters.direction} onChange={(e) => setFilters(f => ({ ...f, direction: e.target.value as any }))} className="px-2 py-1 rounded border dark:border-white/10 bg-white dark:bg-slate-900"><option value="">All</option><option value="Long">Long</option><option value="Short">Short</option></select>
             <input placeholder="Min P&L" inputMode="decimal" value={filters.minPnl} onChange={(e) => setFilters(f => ({ ...f, minPnl: e.target.value }))} className="px-2 py-1 w-24 rounded border dark:border-white/10 bg-white dark:bg-slate-900" />
@@ -2514,10 +2839,10 @@ const AQTApp: React.FC = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-blue-600 dark:text-blue-300 border-b border-slate-200 dark:border-white/10">
-                  <th scope="col" className="pb-3 pl-2">Time</th>
+                  <th scope="col" className="pb-3 pl-2 hidden sm:table-cell">Time</th>
                   <th scope="col" className="pb-3">Pair</th>
                   <th scope="col" className="pb-3">Dir</th>
-                  <th scope="col" className="pb-3">Setup</th>
+                  <th scope="col" className="pb-3 hidden sm:table-cell">Setup</th>
                   <th scope="col" className="pb-3">Lots</th>
                   <th scope="col" className="pb-3">P&L</th>
                   <th scope="col" className="pb-3">Notes</th>
@@ -2563,13 +2888,18 @@ const AQTApp: React.FC = () => {
                 ) : (
                   filteredTrades.map((t) => (
                     <tr key={t.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5">
-                      <td className="py-3 pl-2 text-slate-600 dark:text-white">{t.date} <span className="text-xs text-slate-400">{t.time}</span></td>
+                      <td className="py-3 pl-2 text-slate-600 dark:text-white hidden sm:table-cell">{t.date} <span className="text-xs text-slate-400">{t.time}</span></td>
                       <td className="py-3 font-bold text-slate-800 dark:text-white">{t.pair}</td>
                       <td className="py-3"><span className={`px-2 py-0.5 rounded text-xs ${t.direction === "Long" ? "bg-green-100 text-green-700 dark:text-green-300 dark:bg-green-900/50" : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-900/50"}`}>{t.direction}</span></td>
-                      <td className="py-3 text-slate-500 dark:text-slate-400 text-xs">{t.setup}</td>
+                      <td className="py-3 text-slate-500 dark:text-slate-400 text-xs hidden sm:table-cell">{t.setup}</td>
                       <td className="py-3 text-slate-600 dark:text-slate-300 font-mono">{t.lots}</td>
                       <td className={`py-3 font-bold font-mono ${t.pnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{fmtUSD(t.pnl)}</td>
-                      <td className="py-3"><button onClick={() => setNotesModalTradeId(t.id)} className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-300 hover:underline"><Edit3 size={14} /> {t.notes ? "Edit" : "Add"}</button></td>
+                      <td className="py-3">
+                        <button onClick={() => setNotesModalTradeId(t.id)} className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-300 hover:underline">
+                          {t.imageUrl && <ImageIcon size={14} className="text-purple-500" />}
+                          <Edit3 size={14} /> {t.notes || t.imageUrl ? "Details" : "Add"}
+                        </button>
+                      </td>
                       <td className="py-3 text-right">
                         <div className="flex justify-end gap-2">
                           <button onClick={() => copyTrade(t)} className="text-blue-400 hover:text-blue-600" aria-label="Copy"><ClipboardCopy size={14} /></button>
@@ -2594,8 +2924,36 @@ const AQTApp: React.FC = () => {
         </CollapsibleSection>
       </div>
 
-      <TradeNotesModal trade={notesTrade} isOpen={!!notesModalTradeId} onClose={() => setNotesModalTradeId(null)} onSave={saveNotes} />
+      <TradeNotesModal
+        trade={notesTrade}
+        isOpen={!!notesModalTradeId}
+        onClose={() => setNotesModalTradeId(null)}
+        onSave={saveNotes}
+        onUpload={uploadTradeImage}
+      />
       <SettingsDrawer isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} settings={globalSettings} onSave={(s) => setGlobalSettings((prev) => ({ ...prev, ...s }))} />
+
+      {/* Analytics Modal */}
+      {showAnalytics && (
+        <div className="fixed inset-0 bg-slate-900/95 z-50 overflow-y-auto p-4 md:p-8 animate-in fade-in duration-200">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
+                <BarChart2 className="text-blue-400" />
+                Visual Analytics
+              </h2>
+              <button
+                onClick={() => setShowAnalytics(false)}
+                className="p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                title="Close"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <AnalyticsDashboard trades={trades} currentBalance={balance} startBalance={globalSettings.startBalance || 1000} />
+          </div>
+        </div>
+      )}
 
       {/* Help Guide Modal */}
       <HelpGuide isOpen={showHelp} onClose={() => setShowHelp(false)} />
@@ -2608,6 +2966,230 @@ const AQTApp: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ============= PHASE 1-5: NEW UI COMPONENTS ============= */}
+
+      {/* Smart Insights Modal */}
+      {showInsights && (
+        <div className="fixed inset-0 bg-black/80 z-50 overflow-y-auto p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex justify-between items-center mb-4 bg-slate-900 p-4 rounded-t-xl">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Brain className="text-purple-400" />
+                Smart Insights
+              </h2>
+              <button onClick={() => setShowInsights(false)} className="text-white hover:text-slate-300">
+                <X size={24} />
+              </button>
+            </div>
+            <SmartInsights trades={trades} />
+          </div>
+        </div>
+      )}
+
+      {/* Tag Manager Modal */}
+      {showTagManager && (
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto p-4 backdrop-blur-sm">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl">
+              <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+                <h2 className="text-lg font-bold dark:text-white">Manage Tags</h2>
+                <button onClick={() => setShowTagManager(false)} className="text-slate-500 hover:text-slate-700 dark:hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4">
+                <TagManager
+                  tags={tags}
+                  onAddTag={handleAddTag}
+                  onUpdateTag={handleUpdateTag}
+                  onDeleteTag={handleDeleteTag}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Strategy Library Modal */}
+      {showStrategyLibrary && (
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto p-4 backdrop-blur-sm">
+          <div className="max-w-6xl mx-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl">
+              <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+                <h2 className="text-lg font-bold dark:text-white">Strategy Library</h2>
+                <button onClick={() => setShowStrategyLibrary(false)} className="text-slate-500 hover:text-slate-700 dark:hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4">
+                <StrategyLibrary
+                  strategies={strategies}
+                  onAddStrategy={handleAddStrategy}
+                  onUpdateStrategy={handleUpdateStrategy}
+                  onDeleteStrategy={handleDeleteStrategy}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Manager Modal */}
+      {showNewSettingsManager && (
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto p-4 backdrop-blur-sm">
+          <div className="max-w-3xl mx-auto my-8">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden">
+              <div className="h-full">
+                <SettingsManager
+                  isOpen={showNewSettingsManager}
+                  settings={{
+                    balance,
+                    broker,
+                    safeMode,
+                    isPremium: true,
+                    darkMode,
+                    flipMode: isFlipMode,
+                    dailyGoal: balance * ((globalSettings.dailyGrowth || 5) / 100), // Calculated override
+                    weeklyGoal,
+                    monthlyGoal,
+                    targetBalance: globalSettings.targetBalance || 1000,
+                    startBalance: globalSettings.startBalance || 100,
+                    maxDailyLossPercent: globalSettings.maxDailyLoss || 5,
+                    currentStreak: streakData.currentStreak,
+                    longestStreak: streakData.longestStreak,
+                    showBestStreak: globalSettings.showStreakDetails,
+                    dailyGrowth: globalSettings.dailyGrowth || 5, // Default explicit
+                    // Global settings overlap
+                    ...globalSettings,
+                    leverage: 50, // Default fallback
+                    taxBracketIndex: taxBracketIndex,
+                    isSection1256: isSection1256
+                  } as any}
+                  onSave={(newSettings) => {
+                    // Update Top Level State
+                    if (newSettings.balance !== undefined) { setBalance(newSettings.balance); setBalanceInput(String(newSettings.balance)); }
+                    if (newSettings.broker !== undefined) setBroker(newSettings.broker);
+                    if (newSettings.safeMode !== undefined) setSafeMode(newSettings.safeMode);
+                    if (newSettings.darkMode !== undefined) setDarkMode(newSettings.darkMode);
+                    if (newSettings.flipMode !== undefined) setIsFlipMode(newSettings.flipMode);
+                    if (newSettings.taxBracketIndex !== undefined) setTaxBracketIndex(newSettings.taxBracketIndex);
+                    if (newSettings.isSection1256 !== undefined) setIsSection1256(newSettings.isSection1256);
+
+                    // Update Global Settings
+                    setGlobalSettings(prev => ({
+                      ...prev,
+                      ...newSettings,
+                      // Ensure percentage fields map correctly if needed
+                      maxDailyLoss: newSettings.maxDailyLossPercent ?? prev.maxDailyLoss,
+                      dailyGrowth: newSettings.dailyGrowth ?? prev.dailyGrowth
+                    }));
+
+                    addNotification('custom', 'Settings Saved', 'Your preferences have been updated.');
+                    setShowNewSettingsManager(false);
+                  }}
+                  onClose={() => setShowNewSettingsManager(false)}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Backup Manager Modal */}
+      {showBackupManager && (
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto p-4 backdrop-blur-sm">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl">
+              <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+                <h2 className="text-lg font-bold dark:text-white">Backup & Restore</h2>
+                <button onClick={() => setShowBackupManager(false)} className="text-slate-500 hover:text-slate-700 dark:hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4">
+                <BackupManager
+                  balance={balance}
+                  trades={trades}
+                  settings={globalSettings}
+                  tags={tags}
+                  strategies={strategies}
+                  onRestore={(data: any) => {
+                    if (data.balance) { setBalance(data.balance); setBalanceInput(String(data.balance)); }
+                    if (data.settings) setGlobalSettings(prev => ({ ...prev, ...data.settings }));
+                    if (data.tags) setTags(data.tags);
+                    if (data.strategies) setStrategies(data.strategies);
+                    setShowBackupManager(false);
+                    alert('Backup restored!');
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Goal Tracker Modal */}
+      {showGoalTracker && (
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto p-4 backdrop-blur-sm">
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl">
+              <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
+                <h2 className="text-lg font-bold dark:text-white">Goals & Milestones</h2>
+                <button onClick={() => setShowGoalTracker(false)} className="text-slate-500 hover:text-slate-700 dark:hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4">
+                <GoalTracker
+                  currentBalance={balance}
+                  startBalance={globalSettings.startBalance || 100}
+                  targetBalance={globalSettings.targetBalance || 1000}
+                  totalPnL={totalPnL}
+                  totalTrades={trades.length}
+                  currentStreak={streakData.currentStreak}
+                  longestStreak={streakData.longestStreak}
+                  winRate={riskMetrics.winRate}
+                  onMilestoneAchieved={(milestone) => {
+                    addNotification('streak_milestone', 'Milestone Achieved!', `You've reached: ${milestone.name}`);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Focus Mode Overlay */}
+      {showFocusMode && (
+        <FocusMode
+          isActive={showFocusMode}
+          onClose={() => setShowFocusMode(false)}
+          currentBalance={balance}
+          todayPnL={todayPnl}
+        >
+          <div className="bg-slate-800 rounded-xl p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Quick Trade Entry</h3>
+            <p className="text-slate-400 text-sm">Focus mode active. Press Ctrl+Shift+F to exit.</p>
+          </div>
+        </FocusMode>
+      )}
+
+      {/* Notification Manager in Header */}
+      <div className="fixed top-4 right-4 z-40">
+        <NotificationManager
+          notifications={notifications}
+          onMarkRead={handleMarkRead}
+          onClearAll={handleClearNotifications}
+          notificationSettings={{ enabled: true, sound: true }}
+        />
+      </div>
+
+      {/* Keyboard Shortcut Manager */}
+      <ShortcutManager shortcuts={shortcuts} enabled={!showFocusMode} />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
 
     </div>
   );
