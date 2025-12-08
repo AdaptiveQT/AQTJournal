@@ -20,6 +20,7 @@ export interface Trade {
     takeProfit?: string;
     riskRewardRatio?: number;
     notes?: string;
+    accountId?: string; // Link to TradingAccount
 
     // Phase 1 Enhancements
     tags?: string[]; // Array of tag IDs
@@ -28,6 +29,22 @@ export interface Trade {
     sessionType?: 'London' | 'NewYork' | 'Tokyo' | 'Sydney' | 'Asian' | 'Overlap';
     strategyId?: string; // ID of strategy used
     imageUrl?: string; // Trade screenshot
+}
+
+/**
+ * Trading Account from MT5/MT4 report or manual entry
+ */
+export interface TradingAccount {
+    id: string;
+    name: string;           // Account holder name (e.g., "Alvin Marshall")
+    accountNumber: string;  // Account ID (e.g., "973451")
+    broker: string;         // Company/Broker name (e.g., "Coinexx Limited")
+    currency: string;       // Account currency (e.g., "USD")
+    accountType?: string;   // Account type (e.g., "real, Hedge")
+    server?: string;        // Server name (e.g., "Coinexx-Live")
+    createdAt: number;      // Timestamp when account was added
+    lastUpdated: number;    // Timestamp of last import
+    lastReportDate?: string; // Date from last imported report
 }
 
 export interface NewTradeInput {
@@ -89,6 +106,9 @@ export interface UserSettings {
     autoBackup?: boolean;
     backupFrequency?: 'daily' | 'weekly' | 'monthly';
     lastBackupDate?: number;
+
+    // Multi-account
+    activeAccountId?: string; // Currently selected trading account
 }
 
 export interface Tier {

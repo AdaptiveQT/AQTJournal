@@ -13,7 +13,7 @@ import {
     Download,
     RefreshCw
 } from 'lucide-react';
-import { Trade } from '../../types';
+import { Trade, TradingAccount } from '../../types';
 import {
     ColumnMapping,
     ImportResult,
@@ -22,13 +22,15 @@ import {
     detectColumnMappings,
     addSampleValues,
     convertToTrades,
-    ImportFileType
+    ImportFileType,
+    MT5AccountInfo
 } from '../../utils/importPipeline';
+import { User } from 'lucide-react';
 
 interface ImportWizardProps {
     isOpen: boolean;
     onClose: () => void;
-    onImport: (trades: Trade[]) => void;
+    onImport: (trades: Trade[], accountInfo?: MT5AccountInfo | null) => void;
     darkMode?: boolean;
 }
 
@@ -64,6 +66,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
     const [mappings, setMappings] = useState<ColumnMapping[]>([]);
     const [importResult, setImportResult] = useState<ImportResult | null>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [accountInfo, setAccountInfo] = useState<MT5AccountInfo | null>(null);
 
     // Reset wizard
     const reset = useCallback(() => {
@@ -74,6 +77,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
         setRows([]);
         setMappings([]);
         setImportResult(null);
+        setAccountInfo(null);
     }, []);
 
     // Handle file selection
@@ -87,6 +91,7 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
             setFileType(result.fileType);
             setHeaders(result.headers);
             setRows(result.rows);
+            setAccountInfo(result.accountInfo || null);
 
             // Auto-detect mappings
             const detectedMappings = detectColumnMappings(result.headers);
@@ -145,14 +150,14 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
     // Final import
     const handleImport = useCallback(() => {
         if (importResult?.trades.length) {
-            onImport(importResult.trades);
+            onImport(importResult.trades, accountInfo);
             setStep('complete');
             setTimeout(() => {
                 reset();
                 onClose();
             }, 2000);
         }
-    }, [importResult, onImport, reset, onClose]);
+    }, [importResult, onImport, reset, onClose, accountInfo]);
 
     if (!isOpen) return null;
 
@@ -179,8 +184,8 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                         <React.Fragment key={s}>
                             <div className={`flex items-center gap-2 ${step === s ? 'text-blue-500' : 'text-slate-400'}`}>
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step === s ? 'bg-blue-500 text-white' :
-                                        ['upload', 'map', 'validate', 'complete'].indexOf(step) > idx ? 'bg-green-500 text-white' :
-                                            'bg-slate-200 dark:bg-slate-700'
+                                    ['upload', 'map', 'validate', 'complete'].indexOf(step) > idx ? 'bg-green-500 text-white' :
+                                        'bg-slate-200 dark:bg-slate-700'
                                     }`}>
                                     {['upload', 'map', 'validate', 'complete'].indexOf(step) > idx ? <Check size={16} /> : idx + 1}
                                 </div>
@@ -230,6 +235,47 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                                     File: <strong>{fileName}</strong> ({fileType.toUpperCase()}) • {rows.length} rows detected
                                 </p>
                             </div>
+
+                            {/* Account Info Card */}
+                            {accountInfo && (accountInfo.name || accountInfo.accountNumber) && (
+                                <div className={`mb-4 p-4 rounded-xl border-2 border-blue-200 ${darkMode ? 'bg-blue-900/20 border-blue-700' : 'bg-blue-50'}`}>
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className={`p-2 rounded-full ${darkMode ? 'bg-blue-800' : 'bg-blue-100'}`}>
+                                            <User size={20} className="text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-blue-800 dark:text-blue-200">Account Detected</h4>
+                                            <p className="text-xs text-blue-600 dark:text-blue-300">This info will be saved to your profile</p>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 text-sm">
+                                        {accountInfo.name && (
+                                            <div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">Name</div>
+                                                <div className="font-medium">{accountInfo.name}</div>
+                                            </div>
+                                        )}
+                                        {accountInfo.accountNumber && (
+                                            <div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">Account</div>
+                                                <div className="font-medium font-mono">{accountInfo.accountNumber}</div>
+                                            </div>
+                                        )}
+                                        {accountInfo.broker && (
+                                            <div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">Broker</div>
+                                                <div className="font-medium">{accountInfo.broker}</div>
+                                            </div>
+                                        )}
+                                        {accountInfo.currency && (
+                                            <div>
+                                                <div className="text-xs text-slate-500 dark:text-slate-400">Currency</div>
+                                                <div className="font-medium">{accountInfo.currency}</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="space-y-3">
                                 {mappings.map((mapping) => (
@@ -395,8 +441,8 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                                 onClick={handleValidate}
                                 disabled={!requiredFieldsMapped}
                                 className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 ${requiredFieldsMapped
-                                        ? 'bg-blue-600 text-white hover:bg-blue-500'
-                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                     }`}
                             >
                                 Validate <ArrowRight size={18} />

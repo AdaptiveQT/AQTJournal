@@ -107,6 +107,8 @@ import { registerServiceWorker, setupInstallPrompt } from "../utils/pwa";
 // Types
 import { Tag } from "../types/tags";
 import { Strategy } from "../types/strategies";
+import { TradingAccount } from "../types";
+import { MT5AccountInfo } from "../utils/importPipeline";
 
 /* ---------------- Firebase (inlined) ---------------- */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
@@ -1920,6 +1922,10 @@ const AQTApp: React.FC = () => {
   const [showDemoBanner, setShowDemoBanner] = useState(true);
   const [showImportWizard, setShowImportWizard] = useState(false);
 
+  // Multi-Account State
+  const [accounts, setAccounts] = useState<TradingAccount[]>([]);
+  const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
+
   // Onboarding State
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(true);
@@ -2026,7 +2032,39 @@ const AQTApp: React.FC = () => {
   useEffect(() => { const t = setTimeout(() => setIsLoading(false), 600); return () => clearTimeout(t); }, []);
 
   // Migration for old broker key
-  useEffect(() => { if (broker === "Hugo’s Way") setBroker("Hugo's Way"); }, [broker]);
+  useEffect(() => { if (broker === "Hugo's Way") setBroker("Hugo's Way"); }, [broker]);
+
+  // Load accounts from localStorage on mount
+  useEffect(() => {
+    if (!isBrowser) return;
+    try {
+      const stored = localStorage.getItem('aqt_accounts');
+      if (stored) {
+        const parsed = JSON.parse(stored) as TradingAccount[];
+        setAccounts(parsed);
+        if (parsed.length > 0 && !activeAccountId) {
+          setActiveAccountId(parsed[0].id);
+        }
+      }
+    } catch (e) {
+      console.warn('[AQT] Failed to load accounts:', e);
+    }
+  }, []);
+
+  // Save accounts to localStorage when they change  
+  useEffect(() => {
+    if (!isBrowser || accounts.length === 0) return;
+    try {
+      localStorage.setItem('aqt_accounts', JSON.stringify(accounts));
+    } catch (e) {
+      console.warn('[AQT] Failed to save accounts:', e);
+    }
+  }, [accounts]);
+
+  // Get active account for greeting
+  const activeAccount = useMemo(() => {
+    return accounts.find(a => a.id === activeAccountId) || accounts[0] || null;
+  }, [accounts, activeAccountId]);
 
   useEffect(() => {
     if (!("Notification" in window)) return;
@@ -3484,15 +3522,57 @@ const AQTApp: React.FC = () => {
         <ImportWizard
           isOpen={showImportWizard}
           onClose={() => setShowImportWizard(false)}
-          onImport={(importedTrades) => {
-            // Add imported trades
+          onImport={(importedTrades, accountInfo) => {
+            // Handle account info if present
+            let accountId: string | undefined;
+            if (accountInfo && (accountInfo.name || accountInfo.accountNumber)) {
+              // Check if account already exists
+              const existingAccount = accounts.find(
+                acc => acc.accountNumber === accountInfo.accountNumber
+              );
+
+              if (existingAccount) {
+                // Update existing account
+                accountId = existingAccount.id;
+                setAccounts(prev => prev.map(acc =>
+                  acc.id === existingAccount.id
+                    ? { ...acc, lastUpdated: Date.now(), lastReportDate: accountInfo.reportDate }
+                    : acc
+                ));
+              } else {
+                // Create new account
+                const newAccount: TradingAccount = {
+                  id: `acct-${Date.now()}`,
+                  name: accountInfo.name || 'Unknown',
+                  accountNumber: accountInfo.accountNumber || '',
+                  broker: accountInfo.broker || '',
+                  currency: accountInfo.currency || 'USD',
+                  accountType: accountInfo.accountType,
+                  server: accountInfo.server,
+                  createdAt: Date.now(),
+                  lastUpdated: Date.now(),
+                  lastReportDate: accountInfo.reportDate
+                };
+                accountId = newAccount.id;
+                setAccounts(prev => [...prev, newAccount]);
+
+                // Set as active if first account
+                if (accounts.length === 0) {
+                  setActiveAccountId(newAccount.id);
+                }
+              }
+            }
+
+            // Add imported trades with account ID
             const newTrades = importedTrades.map((t, i) => ({
               ...t,
               id: `imported-${Date.now()}-${i}`,
               ts: t.ts || new Date(t.date).getTime(),
+              accountId: accountId
             })) as Trade[];
             setTrades(prev => [...prev, ...newTrades]);
             setShowImportWizard(false);
+            setIsDemoMode(false);
           }}
           darkMode={darkMode}
         />
