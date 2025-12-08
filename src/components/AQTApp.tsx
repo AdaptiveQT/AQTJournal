@@ -2681,6 +2681,15 @@ const AQTApp: React.FC = () => {
               <button onClick={() => setShowRRCalculator(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 transition-all" title="Risk/Reward Calculator"><Calculator size={18} /></button>
             </div>
 
+            {/* Import Button */}
+            <button
+              onClick={() => setShowImportWizard(true)}
+              className="p-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg"
+              title="Import Trades (MT4/MT5)"
+            >
+              <Upload size={18} />
+            </button>
+
             {/* Settings */}
             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200 dark:border-white/5">
               <button onClick={() => setIsSettingsOpen(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all" title="Settings"><SettingsIcon size={18} /></button>
@@ -3460,6 +3469,25 @@ const AQTApp: React.FC = () => {
         currentBalance={balance}
         darkMode={darkMode}
       />
+
+      {/* Import Wizard Modal */}
+      {showImportWizard && (
+        <ImportWizard
+          isOpen={showImportWizard}
+          onClose={() => setShowImportWizard(false)}
+          onImport={(importedTrades) => {
+            // Add imported trades
+            const newTrades = importedTrades.map((t, i) => ({
+              ...t,
+              id: `imported-${Date.now()}-${i}`,
+              ts: t.ts || new Date(t.date).getTime(),
+            })) as Trade[];
+            setTrades(prev => [...prev, ...newTrades]);
+            setShowImportWizard(false);
+          }}
+          darkMode={darkMode}
+        />
+      )}
 
     </div>
   );
