@@ -92,6 +92,8 @@ import FocusMode from "./FocusMode";
 import InstallPrompt from "./InstallPrompt";
 import EmptyState, { DemoDataBanner, DemoModeIndicator } from "./EmptyState";
 import ImportWizard from "./Import/ImportWizard";
+import WelcomeModal from "./Onboarding/WelcomeModal";
+import OnboardingChecklist from "./Onboarding/OnboardingChecklist";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -1801,6 +1803,11 @@ const AQTApp: React.FC = () => {
   const [showDemoBanner, setShowDemoBanner] = useState(true);
   const [showImportWizard, setShowImportWizard] = useState(false);
 
+  // Onboarding State
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(true);
+  const [hasViewedAnalytics, setHasViewedAnalytics] = useState(false);
+
   // Refs
   const entryRef = useRef<HTMLInputElement>(null);
   const exitRef = useRef<HTMLInputElement>(null);
@@ -2605,6 +2612,23 @@ const AQTApp: React.FC = () => {
           />
         )}
 
+        {/* ONBOARDING CHECKLIST */}
+        {showOnboardingChecklist && trades.length < 20 && (
+          <OnboardingChecklist
+            tradesCount={trades.length}
+            hasTaggedTrade={trades.some(t => t.setup && t.setup !== 'Import')}
+            hasViewedDashboard={hasViewedAnalytics}
+            onAddTrade={() => window.scrollTo({ top: document.body.scrollHeight * 0.3, behavior: 'smooth' })}
+            onOpenSetups={() => setShowTagManager(true)}
+            onViewDashboard={() => {
+              setHasViewedAnalytics(true);
+              setShowInsights(true);
+            }}
+            onDismiss={() => setShowOnboardingChecklist(false)}
+            darkMode={darkMode}
+          />
+        )}
+
         {/* SUMMARY */}
         <PerformanceSummary metrics={riskMetrics} />
 
@@ -3266,6 +3290,26 @@ const AQTApp: React.FC = () => {
         onImport={(importedTrades) => {
           setTrades(prev => [...prev, ...(importedTrades as Trade[])]);
           setIsDemoMode(false);
+        }}
+        darkMode={darkMode}
+      />
+
+      {/* Welcome Modal (FTUX) */}
+      <WelcomeModal
+        isOpen={showWelcomeModal}
+        onClose={() => {
+          setShowWelcomeModal(false);
+          localStorage.setItem('aqt_has_visited', 'true');
+        }}
+        onLoadDemo={() => {
+          loadDemoData();
+          setShowWelcomeModal(false);
+          localStorage.setItem('aqt_has_visited', 'true');
+        }}
+        onOpenImport={() => {
+          setShowImportWizard(true);
+          setShowWelcomeModal(false);
+          localStorage.setItem('aqt_has_visited', 'true');
         }}
         darkMode={darkMode}
       />
