@@ -2419,6 +2419,7 @@ const AQTApp: React.FC = () => {
             <div>
               <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
                 AQT <span className="text-blue-600 dark:text-blue-400">v2.8 Pro</span>
+                <span className="ml-2 px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">Beta</span>
                 {user ? (
                   <span className="inline-flex" aria-label="Synced to Cloud">
                     <Cloud size={16} className="text-green-500" />
