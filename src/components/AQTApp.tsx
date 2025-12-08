@@ -91,6 +91,7 @@ import ShortcutManager, { createDefaultShortcuts } from "./ShortcutManager";
 import FocusMode from "./FocusMode";
 import InstallPrompt from "./InstallPrompt";
 import EmptyState, { DemoDataBanner, DemoModeIndicator } from "./EmptyState";
+import ImportWizard from "./Import/ImportWizard";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -1798,6 +1799,8 @@ const AQTApp: React.FC = () => {
   // Demo Mode State
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [showDemoBanner, setShowDemoBanner] = useState(true);
+  const [showImportWizard, setShowImportWizard] = useState(false);
+
   // Refs
   const entryRef = useRef<HTMLInputElement>(null);
   const exitRef = useRef<HTMLInputElement>(null);
@@ -3255,6 +3258,17 @@ const AQTApp: React.FC = () => {
       {isDemoMode && (
         <DemoModeIndicator onClearDemo={clearDemoData} />
       )}
+
+      {/* Import Wizard Modal */}
+      <ImportWizard
+        isOpen={showImportWizard}
+        onClose={() => setShowImportWizard(false)}
+        onImport={(importedTrades) => {
+          setTrades(prev => [...prev, ...(importedTrades as Trade[])]);
+          setIsDemoMode(false);
+        }}
+        darkMode={darkMode}
+      />
 
     </div>
   );

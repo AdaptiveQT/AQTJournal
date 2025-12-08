@@ -1,4 +1,6 @@
-﻿src/components/AQTApp.tsx(2265,15): error TS2339: Property 'time' does not exist on type 'Trade'.
-src/components/AQTApp.tsx(2277,7): error TS2448: Block-scoped variable 'addNotification' used before its declaration.
-src/components/AQTApp.tsx(2287,7): error TS2448: Block-scoped variable 'addNotification' used before its declaration.
-src/data/demoTrades.ts(93,13): error TS2353: Object literal may only specify known properties, and 'time' does not exist in type 'Trade'.
+﻿src/components/AQTApp.tsx(3267,21): error TS2345: Argument of type '(prev: Trade[]) => (Trade | Trade)[]' is not assignable to parameter of type 'SetStateAction<Trade[]>'.
+  Type '(prev: Trade[]) => (Trade | Trade)[]' is not assignable to type '(prevState: Trade[]) => Trade[]'.
+    Type '(Trade | Trade)[]' is not assignable to type 'Trade[]'.
+      Type 'Trade | Trade' is not assignable to type 'Trade'.
+        Type 'import("C:/Users/Owner/Desktop/AQTJournal-clean/src/types/index").Trade' is not assignable to type 'Trade'.
+          Property 'time' is optional in type 'Trade' but required in type 'Trade'.
