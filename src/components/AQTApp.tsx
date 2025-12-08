@@ -2625,29 +2625,38 @@ const AQTApp: React.FC = () => {
 
             {/* Sign-in buttons */}
             <div className="flex items-center gap-2">
-              <button
-                onClick={signInWithGoogle}
-                className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 dark:bg-white/10 border dark:border-white/20 dark:hover:bg-white/20 text-white text-sm transition-colors"
-                aria-label="Sign in with Google"
-              >
-                Sign in with Google
-              </button>
-              <button
-                onClick={signInWithTwitter}
-                className="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 dark:bg-slate-800 text-white dark:hover:bg-slate-700 flex items-center gap-2 text-sm border border-slate-600 dark:border-white/10 transition-colors"
-                aria-label="Sign in with X (Twitter)"
-              >
-                <Twitter size={16} />
-                Sign in with X
-              </button>
+              {!user && (
+                <>
+                  <button
+                    onClick={signInWithGoogle}
+                    className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 dark:bg-white/10 border dark:border-white/20 dark:hover:bg-white/20 text-white text-sm transition-colors"
+                    aria-label="Sign in with Google"
+                  >
+                    Sign in with Google
+                  </button>
+                  <button
+                    onClick={signInWithTwitter}
+                    className="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 dark:bg-slate-800 text-white dark:hover:bg-slate-700 flex items-center gap-2 text-sm border border-slate-600 dark:border-white/10 transition-colors"
+                    aria-label="Sign in with X (Twitter)"
+                  >
+                    <Twitter size={16} />
+                    Sign in with X
+                  </button>
+                </>
+              )}
               {user && (
-                <button
-                  onClick={signOutAll}
-                  className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-500 text-sm"
-                  aria-label="Sign out"
-                >
-                  Sign out
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-600 dark:text-slate-300">
+                    {user.displayName || user.email}
+                  </span>
+                  <button
+                    onClick={signOutAll}
+                    className="px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-500 text-sm"
+                    aria-label="Sign out"
+                  >
+                    Sign out
+                  </button>
+                </div>
               )}
             </div>
           </div>
