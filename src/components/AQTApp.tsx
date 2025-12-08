@@ -50,6 +50,7 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
+  Check,
   MoreVertical,
   Image as ImageIcon
 } from "lucide-react";
@@ -1126,47 +1127,162 @@ const TradeNotesModal: React.FC<{
   );
 };
 
-const SettingsDrawer: React.FC<{ isOpen: boolean; onClose: () => void; settings: GlobalSettings; onSave: (s: GlobalSettings) => void }> = ({ isOpen, onClose, settings, onSave }) => {
+const SettingsDrawer: React.FC<{ isOpen: boolean; onClose: () => void; settings: GlobalSettings; onSave: (s: GlobalSettings) => void; balance?: number; onSetBalance?: (b: number) => void }> = ({ isOpen, onClose, settings, onSave, balance = 0, onSetBalance }) => {
   const [local, setLocal] = useState(settings);
-  useEffect(() => setLocal(settings), [settings, isOpen]);
+  const [balanceInput, setBalanceInput] = useState(balance.toString());
+  useEffect(() => { setLocal(settings); setBalanceInput(balance.toString()); }, [settings, balance, isOpen]);
   if (!isOpen) return null;
+
+  const handleSave = () => {
+    const newBalance = parseFloat(balanceInput.replace(/[,$]/g, ''));
+    if (!isNaN(newBalance) && newBalance > 0 && onSetBalance) {
+      onSetBalance(newBalance);
+    }
+    onSave(local);
+    onClose();
+  };
+
+  const settingLabels: Record<string, { label: string; icon: React.ElementType; description: string }> = {
+    pipValue: { label: 'Pip Value ($)', icon: DollarSign, description: 'Value per pip per lot' },
+    stopLoss: { label: 'Stop Loss (pips)', icon: Shield, description: 'Max loss per trade' },
+    profitTarget: { label: 'Profit Target (pips)', icon: Target, description: 'Expected take profit' },
+    dailyGrowth: { label: 'Daily Growth (%)', icon: TrendingUp, description: 'Target daily % gain' },
+  };
+
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 z-50 w-80 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-white/10 shadow-2xl p-6 overflow-y-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="text-xl font-bold dark:text-white flex gap-2"><SettingsIcon /> Settings</h3>
-          <button onClick={onClose}><X className="dark:text-white" /></button>
-        </div>
-        <div className="space-y-6">
-          {(["pipValue", "stopLoss", "profitTarget", "dailyGrowth"] as ("pipValue" | "stopLoss" | "profitTarget" | "dailyGrowth")[]).map((k) => (
-            <div key={k}>
-              <label className="block text-sm font-medium dark:text-slate-300 mb-1 capitalize">{k.replace(/([A-Z])/g, " $1")}</label>
-              <input
-                type="number"
-                step="0.01"
-                value={local[k]}
-                onChange={(e) => setLocal({ ...local, [k]: parseFloat(e.target.value) || 0 })}
-                className="w-full p-3 bg-slate-50 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded dark:text-white"
-              />
+      <div className="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 w-96 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-white/10 shadow-2xl flex flex-col">
+        {/* Gradient Header */}
+        <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 p-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-16 h-16 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <div className="relative z-10 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <SettingsIcon className="text-white" size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Settings</h3>
+                <p className="text-white/70 text-xs">Trading configuration</p>
+              </div>
             </div>
-          ))}
+            <button onClick={onClose} className="p-2 hover:bg-white/20 rounded-lg transition-colors">
+              <X className="text-white" size={20} />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {/* Balance Section - First! */}
+          {onSetBalance && (
+            <div className="p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-2 border-green-500/30 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="text-green-600" size={18} />
+                <span className="font-bold text-green-700 dark:text-green-400 text-sm">Account Balance</span>
+              </div>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600" size={18} />
+                <input
+                  type="text"
+                  value={balanceInput}
+                  onChange={(e) => setBalanceInput(e.target.value)}
+                  placeholder="10000"
+                  className="w-full pl-10 pr-4 py-3 text-xl font-bold rounded-lg border-2 border-green-500/50 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-green-500 outline-none"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {[1000, 5000, 10000, 25000].map(amount => (
+                  <button
+                    key={amount}
+                    onClick={() => setBalanceInput(amount.toString())}
+                    className={`px-2 py-1 text-xs font-medium rounded-lg transition-all ${balanceInput === amount.toString()
+                      ? 'bg-green-500 text-white'
+                      : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200'
+                      }`}
+                  >
+                    ${amount.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Trading Settings */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <Target size={16} className="text-purple-500" /> Trading Parameters
+            </h4>
+            {(["pipValue", "stopLoss", "profitTarget", "dailyGrowth"] as const).map((k) => {
+              const config = settingLabels[k];
+              const Icon = config.icon;
+              return (
+                <div key={k} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center flex-shrink-0">
+                    <Icon size={18} className="text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-sm font-medium dark:text-white">{config.label}</label>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{config.description}</p>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={local[k]}
+                    onChange={(e) => setLocal({ ...local, [k]: parseFloat(e.target.value) || 0 })}
+                    className="w-20 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg dark:text-white text-right font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Display Options */}
           <div className="pt-4 border-t border-slate-200 dark:border-white/10 space-y-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={local.showWeeklyGoals} onChange={(e) => setLocal({ ...local, showWeeklyGoals: e.target.checked })} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
-              <span className="text-sm font-medium dark:text-slate-300">Show Weekly/Monthly Goals</span>
+            <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <Eye size={16} className="text-pink-500" /> Display Options
+            </h4>
+            <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl cursor-pointer">
+              <input
+                type="checkbox"
+                checked={local.showWeeklyGoals}
+                onChange={(e) => setLocal({ ...local, showWeeklyGoals: e.target.checked })}
+                className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-medium dark:text-white">Show Weekly/Monthly Goals</span>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Display extended goal tracking</p>
+              </div>
             </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={local.showStreakDetails} onChange={(e) => setLocal({ ...local, showStreakDetails: e.target.checked })} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
-              <span className="text-sm font-medium dark:text-slate-300">Show detailed streak info</span>
+            <label className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl cursor-pointer">
+              <input
+                type="checkbox"
+                checked={local.showStreakDetails}
+                onChange={(e) => setLocal({ ...local, showStreakDetails: e.target.checked })}
+                className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
+              />
+              <div>
+                <span className="text-sm font-medium dark:text-white">Show Detailed Streak Info</span>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Best streak, current streak details</p>
+              </div>
             </label>
           </div>
-          <button onClick={() => { onSave(local); onClose(); }} className="w-full py-3 bg-blue-600 text-white rounded font-bold mt-4">Save Changes</button>
+        </div>
+
+        {/* Footer */}
+        <div className="flex-shrink-0 p-4 border-t border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-slate-800/50">
+          <button
+            onClick={handleSave}
+            className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2"
+          >
+            <Check size={18} /> Save Changes
+          </button>
         </div>
       </div>
     </>
   );
 };
+
 
 /* ---------------- Floating helpers ---------------- */
 const HelpTooltip: React.FC = () => {
