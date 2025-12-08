@@ -3311,6 +3311,11 @@ const AQTApp: React.FC = () => {
           setShowWelcomeModal(false);
           localStorage.setItem('aqt_has_visited', 'true');
         }}
+        onSetBalance={(newBalance) => {
+          setBalance(newBalance);
+          setBalanceInput(newBalance.toString());
+        }}
+        currentBalance={balance}
         darkMode={darkMode}
       />
 
