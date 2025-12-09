@@ -195,33 +195,46 @@ export function parseNumber(value: string): number | null {
 }
 
 /**
- * Parse date value into ISO format
+ * Parse date value into YYYY-MM-DD format
+ * Preserves the date as-is without timezone conversion
  */
 export function parseDate(value: string): string | null {
     if (!value || value.trim() === '') return null;
 
-    // Try various date formats
-    const formats = [
-        /^(\d{4})-(\d{2})-(\d{2})/, // ISO: 2024-01-15
-        /^(\d{2})\/(\d{2})\/(\d{4})/, // US: 01/15/2024
-        /^(\d{2})\.(\d{2})\.(\d{4})/, // EU: 15.01.2024
-        /^(\d{2})-(\d{2})-(\d{4})/, // Alt: 15-01-2024
-    ];
-
-    for (const format of formats) {
-        const match = value.match(format);
-        if (match) {
-            const date = new Date(value);
-            if (!isNaN(date.getTime())) {
-                return date.toISOString().split('T')[0];
-            }
-        }
+    // MT5 format: "2025.05.11 02:44:48" or "2025.05.11"
+    const mt5Match = value.match(/^(\d{4})\.(\d{2})\.(\d{2})/);
+    if (mt5Match) {
+        return `${mt5Match[1]}-${mt5Match[2]}-${mt5Match[3]}`;
     }
 
-    // Fallback: try native parsing
-    const date = new Date(value);
-    if (!isNaN(date.getTime())) {
-        return date.toISOString().split('T')[0];
+    // ISO format: "2024-01-15" or "2024-01-15T..."
+    const isoMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) {
+        return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+    }
+
+    // US format: "01/15/2024"
+    const usMatch = value.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (usMatch) {
+        return `${usMatch[3]}-${usMatch[1]}-${usMatch[2]}`;
+    }
+
+    // EU format: "15.01.2024" (only if not MT5 format which has YYYY first)
+    const euMatch = value.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+    if (euMatch) {
+        return `${euMatch[3]}-${euMatch[2]}-${euMatch[1]}`;
+    }
+
+    // Alt format: "15-01-2024"
+    const altMatch = value.match(/^(\d{2})-(\d{2})-(\d{4})/);
+    if (altMatch) {
+        return `${altMatch[3]}-${altMatch[2]}-${altMatch[1]}`;
+    }
+
+    // Fallback: try to extract any YYYY-MM-DD pattern
+    const anyYMD = value.match(/(\d{4})[.\-\/](\d{2})[.\-\/](\d{2})/);
+    if (anyYMD) {
+        return `${anyYMD[1]}-${anyYMD[2]}-${anyYMD[3]}`;
     }
 
     return null;
