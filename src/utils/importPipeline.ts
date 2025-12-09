@@ -734,7 +734,7 @@ export interface ImportFileResult {
 
 /**
  * Extract balance operations (deposits/withdrawals) from MT5 Deals table
- * Deals with Type="balance" are deposits (Direction=in) or withdrawals (Direction=out)
+ * The first row with a balance value represents the initial deposit
  */
 export function extractBalanceOperations(html: string): { operations: BalanceOperation[], startingBalance: number } {
     const operations: BalanceOperation[] = [];
@@ -750,26 +750,25 @@ export function extractBalanceOperations(html: string): { operations: BalanceOpe
     const headers = dealsData.headers.map(h => h.toLowerCase());
     const timeIdx = headers.findIndex(h => h.includes('time'));
     const typeIdx = headers.findIndex(h => h === 'type');
-    const directionIdx = headers.findIndex(h => h.includes('direction'));
     const profitIdx = headers.findIndex(h => h.includes('profit'));
     const balanceIdx = headers.findIndex(h => h.includes('balance'));
     const commentIdx = headers.findIndex(h => h.includes('comment') || h.includes('notes'));
-    const dealIdIdx = headers.findIndex(h => h.includes('deal'));
 
+    // Look for the first balance value - this represents initial deposit
     for (const row of dealsData.rows) {
         const values = Object.values(row);
-        const type = typeIdx >= 0 ? values[typeIdx]?.toLowerCase() : '';
+        const balance = balanceIdx >= 0 ? parseFloat(values[balanceIdx]?.replace(/[^0-9.-]/g, '') || '0') : 0;
+        const comment = commentIdx >= 0 ? (values[commentIdx] || '').toLowerCase() : '';
+        const type = typeIdx >= 0 ? (values[typeIdx] || '').toLowerCase() : '';
+        const profit = profitIdx >= 0 ? parseFloat(values[profitIdx]?.replace(/[^0-9.-]/g, '') || '0') : 0;
+        const dateStr = timeIdx >= 0 ? values[timeIdx] || '' : '';
 
-        // Balance operations have Type = "balance"
-        if (type === 'balance') {
-            const direction = directionIdx >= 0 ? values[directionIdx]?.toLowerCase() : '';
-            const profit = profitIdx >= 0 ? parseFloat(values[profitIdx]?.replace(/[^0-9.-]/g, '') || '0') : 0;
-            const balance = balanceIdx >= 0 ? parseFloat(values[balanceIdx]?.replace(/[^0-9.-]/g, '') || '0') : 0;
-            const dateStr = timeIdx >= 0 ? values[timeIdx] || '' : '';
-            const comment = commentIdx >= 0 ? values[commentIdx] || '' : '';
-            const dealId = dealIdIdx >= 0 ? values[dealIdIdx] || '' : '';
+        // Check if this is a balance operation (deposit/withdrawal)
+        const isDeposit = type === 'balance' || comment.includes('deposit');
+        const isWithdrawal = comment.includes('withdrawal');
 
-            // Parse date (format: "2025.05.11 02:44:48" or similar)
+        if (balance > 0 && (isDeposit || isWithdrawal || startingBalance === 0)) {
+            // Parse date
             let date = '';
             let ts = 0;
             if (dateStr) {
@@ -780,24 +779,39 @@ export function extractBalanceOperations(html: string): { operations: BalanceOpe
                 }
             }
 
-            const amount = Math.abs(profit);
-            const opType = (direction === 'in' || profit > 0) ? 'deposit' : 'withdrawal';
-
-            if (amount > 0) {
+            // First row with positive balance is typically the first deposit
+            if (startingBalance === 0) {
+                // For deposits, the balance column IS the deposit amount (it's the running balance after deposit)
+                startingBalance = balance;
                 operations.push({
-                    id: `bal-${dealId || Date.now()}-${operations.length}`,
-                    type: opType,
-                    amount,
+                    id: `bal-${Date.now()}-0`,
+                    type: 'deposit',
+                    amount: balance,
+                    date,
+                    ts,
+                    balance,
+                    comment: comment || 'Initial Deposit'
+                });
+            } else if (isDeposit && profit > 0) {
+                operations.push({
+                    id: `bal-${Date.now()}-${operations.length}`,
+                    type: 'deposit',
+                    amount: profit,
                     date,
                     ts,
                     balance,
                     comment
                 });
-
-                // First deposit sets the starting balance
-                if (operations.length === 1 && opType === 'deposit') {
-                    startingBalance = amount;
-                }
+            } else if (isWithdrawal) {
+                operations.push({
+                    id: `bal-${Date.now()}-${operations.length}`,
+                    type: 'withdrawal',
+                    amount: Math.abs(profit),
+                    date,
+                    ts,
+                    balance,
+                    comment
+                });
             }
         }
     }
