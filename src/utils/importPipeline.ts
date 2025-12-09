@@ -692,18 +692,27 @@ export function extractMT5AccountInfo(html: string): MT5AccountInfo | null {
         }
     }
 
-    // Extract broker from <th> or <td> containing bold text
-    // Pattern: <th ...><b>Coinexx Limited</b></th>
-    const brokerMatch = html.match(/<th[^>]*>\s*<b>([^<]+)<\/b>\s*<\/th>/i);
-    if (brokerMatch && !brokerMatch[1].includes('Trade History') && !brokerMatch[1].includes('Positions')) {
-        info.broker = brokerMatch[1].trim();
+    // Extract broker - first try to find company name with suffix like "Limited", "LLC", etc.
+    // Pattern: <b>Coinexx Limited</b> (anywhere in the HTML)
+    const companyMatch = html.match(/<b>([^<]*(?:Limited|LLC|Inc|Corp|Ltd)[^<]*)<\/b>/i);
+    if (companyMatch) {
+        info.broker = companyMatch[1].trim();
     }
 
-    // Alternative broker pattern: look for company-like text
+    // Fallback: Extract broker from <th> containing bold text (but exclude known non-broker text)
     if (!info.broker) {
-        const altBrokerMatch = html.match(/<b>((?:[\w\s]+(?:Limited|LLC|Inc|Corp|Ltd))[^<]*)<\/b>/i);
-        if (altBrokerMatch) {
-            info.broker = altBrokerMatch[1].trim();
+        const thMatches = html.matchAll(/<th[^>]*>\s*<b>([^<]+)<\/b>\s*<\/th>/gi);
+        for (const match of thMatches) {
+            const text = match[1].trim();
+            // Skip if it's a section header or the account holder name
+            if (!text.includes('Trade History') &&
+                !text.includes('Positions') &&
+                !text.includes('Deals') &&
+                !text.includes('Orders') &&
+                text !== info.name) {
+                info.broker = text;
+                break;
+            }
         }
     }
 
