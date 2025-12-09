@@ -3572,6 +3572,12 @@ const AQTApp: React.FC = () => {
               const calculatedBalance = startingBalance + totalPnL;
               setBalance(calculatedBalance);
               setBalanceInput(calculatedBalance.toString());
+
+              // Also update globalSettings.startBalance for equity curve
+              setGlobalSettings(prev => ({
+                ...prev,
+                startBalance: startingBalance
+              }));
             }
 
             // Add imported trades with account ID
