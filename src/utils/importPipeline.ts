@@ -307,7 +307,7 @@ export function convertToTrades(
 
         const trade: Trade = {
             id: getValue('id') || `import-${Date.now()}-${rowIndex}`,
-            pair: pairValue.toUpperCase().replace(/[^A-Z]/g, '').substring(0, 6),
+            pair: pairValue.toUpperCase().replace(/[^A-Z0-9]/g, ''),
             direction,
             entry,
             exit: exit || entry,

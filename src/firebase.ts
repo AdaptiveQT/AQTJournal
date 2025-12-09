@@ -31,4 +31,5 @@ if (typeof window !== "undefined") {
 
 export { auth, db };
 export const APP_ID = process.env.NEXT_PUBLIC_APP_ID || "default-app";
+export const firebaseReady = typeof window !== "undefined" && !!db;
 export default app;

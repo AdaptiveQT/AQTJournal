@@ -86,22 +86,42 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
     const handleFile = useCallback((file: File) => {
         const reader = new FileReader();
         reader.onload = (e) => {
-            const content = e.target?.result as string;
-            const result = importFile(content, file.name);
+            try {
+                const content = e.target?.result as string;
+                const result = importFile(content, file.name);
 
-            setFileName(file.name);
-            setFileType(result.fileType);
-            setHeaders(result.headers);
-            setRows(result.rows);
-            setAccountInfo(result.accountInfo || null);
-            setStartingBalance(result.startingBalance || 0);
+                setFileName(file.name);
+                setFileType(result.fileType);
+                setHeaders(result.headers);
+                setRows(result.rows);
+                setAccountInfo(result.accountInfo || null);
+                setStartingBalance(result.startingBalance || 0);
 
-            // Auto-detect mappings
-            const detectedMappings = detectColumnMappings(result.headers);
-            const withSamples = addSampleValues(detectedMappings, result.rows);
-            setMappings(withSamples);
+                // Auto-detect mappings
+                const detectedMappings = detectColumnMappings(result.headers);
+                const withSamples = addSampleValues(detectedMappings, result.rows);
+                setMappings(withSamples);
 
-            setStep('map');
+                setStep('map');
+            } catch (error) {
+                console.error('Import error:', error);
+                setImportResult({
+                    success: false,
+                    trades: [],
+                    errors: [`Failed to parse file: ${error instanceof Error ? error.message : 'Unknown error'}`],
+                    warnings: []
+                });
+                setStep('confirm');
+            }
+        };
+        reader.onerror = () => {
+            setImportResult({
+                success: false,
+                trades: [],
+                errors: ['Failed to read file. Please try again.'],
+                warnings: []
+            });
+            setStep('confirm');
         };
         reader.readAsText(file);
     }, []);
@@ -281,8 +301,8 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                             )}
 
                             <div className="space-y-3">
-                                {mappings.map((mapping) => (
-                                    <div key={mapping.source} className={`p-3 rounded-lg border ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
+                                {mappings.map((mapping, index) => (
+                                    <div key={`${mapping.source}-${index}`} className={`p-3 rounded-lg border ${darkMode ? 'border-slate-700 bg-slate-800' : 'border-slate-200 bg-slate-50'}`}>
                                         <div className="flex items-center gap-4">
                                             <div className="flex-1">
                                                 <div className="text-sm font-medium">{mapping.source}</div>

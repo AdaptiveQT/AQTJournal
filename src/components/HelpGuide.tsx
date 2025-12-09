@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, BookOpen, Search, ChevronRight, Zap, BarChart2, Settings, HelpCircle, Upload, Database, Target, TrendingUp } from 'lucide-react';
+import { X, BookOpen, Search, ChevronRight, Zap, BarChart2, Settings, HelpCircle, Upload, Target, DollarSign, TrendingUp, Users, Calendar } from 'lucide-react';
 
 interface HelpGuideProps {
     isOpen: boolean;
@@ -16,10 +16,13 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
 
     const sections = [
         { id: 'quick-start', title: 'Quick Start', icon: Zap },
-        { id: 'setup', title: 'Account Setup', icon: Settings },
+        { id: 'trade-entry', title: 'Logging Trades', icon: DollarSign },
+        { id: 'accounts', title: 'Account Management', icon: Users },
         { id: 'analytics', title: 'Analytics Dashboard', icon: BarChart2 },
         { id: 'import', title: 'Import Trades', icon: Upload },
         { id: 'modes', title: 'Flip vs Pro Mode', icon: Target },
+        { id: 'calendar', title: 'Calendar & Streaks', icon: Calendar },
+        { id: 'settings', title: 'Settings', icon: Settings },
         { id: 'tips', title: 'Tips for Success', icon: HelpCircle },
     ];
 
@@ -30,45 +33,96 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                 {
                     subtitle: 'Get Started in 60 Seconds',
                     content: [
-                        '**1. Set Your Account Balance** - First thing you\'ll see is the account setup modal',
-                        '**2. Load Data** - Choose Demo Data (100 sample trades) or Import from MT4/MT5',
-                        '**3. Explore Analytics** - See Expectancy, Session Heatmaps, and R-Multiple charts',
+                        '**1. Set Your Account Balance** - Click the balance card and enter your starting balance',
+                        '**2. Add Your First Trade** - Use the Trade Entry form with Pair, Direction, Entry, Exit, Lots, and Setup',
+                        '**3. Explore Analytics** - Click the Analytics icon (📊) to see charts and insights',
                     ]
                 },
                 {
                     subtitle: 'New User Checklist',
                     content: [
-                        '✓ Add your first trade (or load demo data)',
-                        '✓ Tag a setup type (Breakout, Pullback, etc.)',
+                        '✓ Add your first trade (or click "Load Demo Data" to explore)',
+                        '✓ Select a setup type (Breakout, Pullback, Trend, etc.)',
                         '✓ View your analytics dashboard',
                         '',
-                        '💡 **Tip**: Complete all 3 steps to unlock the full experience!'
+                        '💡 **Tip**: Load Demo Data first to see how everything works!'
                     ]
                 }
             ]
         },
-        'setup': {
-            title: 'Account Setup',
+        'trade-entry': {
+            title: 'Logging Trades',
             sections: [
                 {
-                    subtitle: 'Setting Your Balance',
+                    subtitle: 'Trade Entry Fields',
                     content: [
-                        'Your account balance is critical for:',
-                        '**Risk Calculations** - % risk per trade',
-                        '**Position Sizing** - Lot size recommendations',
-                        '**Performance Metrics** - ROI tracking',
-                        '',
-                        '💡 Use the quick-select buttons: $1K, $5K, $10K, $25K, $50K, $100K'
+                        '**Pair** - The currency pair or symbol (e.g., EURUSD, XAUUSD, US30)',
+                        '**Direction** - Long (Buy) or Short (Sell)',
+                        '**Entry** - Your entry price',
+                        '**Exit** - Your exit/close price',
+                        '**Lots** - Position size (leave blank to use recommended)',
+                        '**Setup** - The strategy used: Breakout, Pullback, Reversal, Trend, Range, Scalp, News, or Other',
                     ]
                 },
                 {
-                    subtitle: 'Sign In Options',
+                    subtitle: 'Live P&L Preview',
                     content: [
-                        '**Anonymous** - Data saves to browser only',
-                        '**Google Sign-In** - Syncs across all devices',
-                        '**Twitter Sign-In** - Same sync benefits',
+                        'The **Live Preview** shows your estimated P&L before you submit:',
+                        '• Green = Profit, Red = Loss',
+                        '• Shows both dollar amount and R-multiple',
+                        '• R-multiple = Profit ÷ Risk (based on 1% account risk)',
                         '',
-                        '⚠️ If you start anonymously and later sign in, your data is preserved!'
+                        '💡 **Tip**: Press Enter in each field to move to the next one quickly'
+                    ]
+                },
+                {
+                    subtitle: 'Setup Categories',
+                    content: [
+                        '**Breakout** - Price breaks through support/resistance',
+                        '**Pullback** - Entry on a retracement in the trend',
+                        '**Reversal** - Trading a market direction change',
+                        '**Trend** - Following the established trend',
+                        '**Range** - Trading inside consolidation zones',
+                        '**Scalp** - Quick in-and-out trades',
+                        '**News** - Event-driven trades',
+                        '**Other** - Custom strategies (SMC, ICT, Wyckoff, etc.)',
+                    ]
+                }
+            ]
+        },
+        'accounts': {
+            title: 'Account Management',
+            sections: [
+                {
+                    subtitle: 'Multiple Accounts',
+                    content: [
+                        'AQT supports **multiple trading accounts**:',
+                        '• Click the **Account Manager** button (person icon) in the header',
+                        '• Add accounts with different brokers and starting balances',
+                        '• Switch between accounts to see separate trade history',
+                        '',
+                        '💡 Each account tracks its own balance, trades, and analytics'
+                    ]
+                },
+                {
+                    subtitle: 'Setting Your Balance',
+                    content: [
+                        'Your account balance is used for:',
+                        '**Risk Calculations** - % risk per trade',
+                        '**Lot Size Recommendations** - Position sizing',
+                        '**Performance Metrics** - ROI and growth tracking',
+                        '',
+                        'Quick-select buttons: $1K, $5K, $10K, $25K, $50K, $100K'
+                    ]
+                },
+                {
+                    subtitle: 'Cloud Sync',
+                    content: [
+                        '**Anonymous** - Data saves to browser only (localStorage)',
+                        '**Google Sign-In** - Syncs across all devices via Firebase',
+                        '**Twitter Sign-In** - Same cloud sync benefits',
+                        '',
+                        '⚠️ Sign in to backup your data! Anonymous data can be lost if you clear browser data.'
                     ]
                 }
             ]
@@ -76,6 +130,15 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
         'analytics': {
             title: 'Analytics Dashboard',
             sections: [
+                {
+                    subtitle: 'Overview Cards',
+                    content: [
+                        '**Win Rate** - Percentage of winning trades',
+                        '**Profit Factor** - Gross profits ÷ Gross losses (>1.5 is good)',
+                        '**Best Trade** - Your largest winning trade',
+                        '**Worst Trade** - Your largest losing trade',
+                    ]
+                },
                 {
                     subtitle: 'Expectancy by Setup',
                     content: [
@@ -90,7 +153,7 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                 {
                     subtitle: 'Session Heatmap',
                     content: [
-                        'Win rate visualization across trading sessions:',
+                        'Win rate by trading session and hour:',
                         '**Asia/Tokyo** - 02:00-06:00 UTC',
                         '**London** - 08:00-12:00 UTC',
                         '**New York** - 14:00-18:00 UTC',
@@ -108,17 +171,6 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                         '',
                         '💡 A positive P50 means you have a statistical edge!'
                     ]
-                },
-                {
-                    subtitle: 'Calendar View',
-                    content: [
-                        'Visual trading calendar showing:',
-                        '**Green days** - Profitable trading days',
-                        '**Red days** - Loss days',
-                        '**Win/Loss count** - Daily breakdown',
-                        '',
-                        'Navigate months with arrow buttons or click "Today"'
-                    ]
                 }
             ]
         },
@@ -128,28 +180,30 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                 {
                     subtitle: 'Supported Formats',
                     content: [
+                        '**MT4/MT5 HTML** - Trade history export (recommended)',
                         '**CSV files** - Comma, semicolon, or tab separated',
-                        '**MT4/MT5 HTML** - Trade history export',
                         '**TXT files** - Text-based trade data',
+                    ]
+                },
+                {
+                    subtitle: 'How to Export from MT5',
+                    content: [
+                        '1. Open MT5 → History tab (bottom panel)',
+                        '2. Right-click → Select "All History" or date range',
+                        '3. Right-click again → **Report → Open XML (Excel)**',
+                        '4. Or: Right-click → **Report → HTML (Detailed)**',
+                        '5. Import the saved file in AQT',
                     ]
                 },
                 {
                     subtitle: 'Import Wizard Steps',
                     content: [
                         '**1. Upload** - Drag & drop or click to select file',
-                        '**2. Map Columns** - Auto-detected, manually adjust if needed',
-                        '**3. Validate** - Review errors and warnings',
+                        '**2. Map Columns** - Auto-detected, adjust if needed',
+                        '**3. Validate** - Review detected trades and errors',
                         '**4. Import** - Confirm and add to your journal',
                         '',
-                        '💡 Required fields: Symbol, Direction, Entry, P&L'
-                    ]
-                },
-                {
-                    subtitle: 'Common Issues',
-                    content: [
-                        '**Missing columns** - Ensure headers match (Pair, Direction, Entry, PnL)',
-                        '**Date format** - Use YYYY-MM-DD or MM/DD/YYYY',
-                        '**Direction values** - Use Long/Short, Buy/Sell, or 1/-1',
+                        '💡 Required: Symbol, Direction, P&L. Date/time optional.'
                     ]
                 }
             ]
@@ -160,31 +214,102 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                 {
                     subtitle: 'Flip Mode 🚀',
                     content: [
-                        '**Best For**: Beginners, Small Accounts',
-                        '**Interface**: Simplified and focused',
-                        '**Daily Trade Limit**: 3 trades/day',
-                        '**Daily Goal Lock**: Stops trading when goal reached',
-                        '**Readiness Check**: Morning checklist before trading',
+                        '**Best For**: Beginners, Small Accounts ($25-$200)',
+                        '**Goal**: Flip a small account into a larger one',
+                        '',
+                        '**Features**:',
+                        '• Daily profit goal tracking',
+                        '• Daily loss limit protection',
+                        '• Readiness checklist before trading',
+                        '• Progress bar to target balance',
                     ]
                 },
                 {
                     subtitle: 'Pro Mode 📊',
                     content: [
-                        '**Best For**: Experienced Traders',
-                        '**Interface**: Full analytics dashboard',
-                        '**Trade Limit**: Unlimited',
-                        '**Features**: Expectancy charts, Session heatmaps, Import wizard',
-                        '**Tier System**: 9 levels from Survival to Legend',
+                        '**Best For**: Experienced Traders, Larger Accounts',
+                        '**Goal**: Detailed analytics and performance tracking',
+                        '',
+                        '**Features**:',
+                        '• Full analytics dashboard',
+                        '• Expectancy charts by setup',
+                        '• Session heatmaps',
+                        '• Import wizard',
+                        '• No trade limits',
                     ]
                 },
                 {
                     subtitle: 'How to Switch',
                     content: [
-                        'Click the mode toggle in the **top-right header**',
-                        '**Flip Mode**: Blue gradient with ⚡ icon',
-                        '**Pro Mode**: Gray button with 📊 icon',
+                        'Click the **Flip Mode / Pro Mode** toggle in the header',
+                        '• Flip Mode: Blue button with ⚡ icon',
+                        '• Pro Mode: Shows full dashboard',
                         '',
                         'Your preference is saved automatically.'
+                    ]
+                }
+            ]
+        },
+        'calendar': {
+            title: 'Calendar & Streaks',
+            sections: [
+                {
+                    subtitle: 'Trading Calendar',
+                    content: [
+                        'Visual overview of your trading performance:',
+                        '**Green days** - Profitable trading days',
+                        '**Red days** - Loss days',
+                        '**Dot indicators** - Trade count and performance',
+                        '',
+                        'Click any day to see trades from that date'
+                    ]
+                },
+                {
+                    subtitle: 'Profit Streak',
+                    content: [
+                        'Tracks consecutive profitable days:',
+                        '**Current Streak** - How many days in a row you\'ve been profitable',
+                        '**Achievements** - Badges for milestones (10 trades, 50 trades, etc.)',
+                        '',
+                        '💡 Focus on consistency, not just big wins!'
+                    ]
+                },
+                {
+                    subtitle: 'Weekly & Monthly Goals',
+                    content: [
+                        'Track progress toward your profit targets:',
+                        '• Set weekly and monthly dollar goals',
+                        '• Progress bars show how close you are',
+                        '• Automatically resets each week/month',
+                    ]
+                }
+            ]
+        },
+        'settings': {
+            title: 'Settings',
+            sections: [
+                {
+                    subtitle: 'Display Settings',
+                    content: [
+                        '**Dark Mode** - Toggle between light and dark themes',
+                        '**Compact View** - Reduce spacing for more data on screen',
+                    ]
+                },
+                {
+                    subtitle: 'Trading Settings',
+                    content: [
+                        '**Default Risk %** - Risk per trade for lot size calculation',
+                        '**Broker** - Your broker (affects pip value calculations)',
+                        '**Leverage** - Account leverage (affects margin calculations)',
+                    ]
+                },
+                {
+                    subtitle: 'Goals (Extended)',
+                    content: [
+                        '**Weekly Goal** - Dollar target per week',
+                        '**Monthly Goal** - Dollar target per month',
+                        '',
+                        'Enable "Show Extended Goals" in settings to display these'
                     ]
                 }
             ]
@@ -195,10 +320,10 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                 {
                     subtitle: 'Trading Psychology',
                     content: [
-                        '✓ **Log emotions honestly** - Patterns reveal trading psychology',
-                        '✓ **Respect daily limits** - Overtrading destroys accounts',
+                        '✓ **Log emotions honestly** - Patterns reveal psychology issues',
+                        '✓ **Respect daily limits** - Overtrading kills accounts',
                         '✓ **Review weekly** - What setups are working?',
-                        '✓ **Focus on R-multiples** - Not just win/loss',
+                        '✓ **Focus on R-multiples** - Not just win/loss count',
                     ]
                 },
                 {
@@ -215,8 +340,8 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                     content: [
                         '✓ **Log immediately** - Don\'t wait until end of day',
                         '✓ **Be consistent** - Every trade, every time',
-                        '✓ **Use notes** - Write what you learned',
-                        '✓ **Tag accurately** - Setup, emotion, session',
+                        '✓ **Add notes** - Write what you learned on each trade',
+                        '✓ **Screenshot charts** - Upload trade images for review',
                     ]
                 }
             ]
@@ -318,7 +443,7 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                         {/* Footer Note */}
                         <div className="mt-8 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
                             <p className="text-blue-200 text-sm">
-                                💡 <strong>New Features:</strong> Expectancy by Setup • Session Heatmaps • R-Multiple ECDF • CSV/MT4 Import • Calendar View
+                                💡 <strong>v2.8 Features:</strong> Multi-Account Support • Expectancy by Setup • Session Heatmaps • MT5 Import • Calendar View • Profit Streaks
                             </p>
                         </div>
                     </div>

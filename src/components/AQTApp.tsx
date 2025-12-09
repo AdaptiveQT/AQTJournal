@@ -52,7 +52,8 @@ import {
   CheckCircle,
   Check,
   MoreVertical,
-  Image as ImageIcon
+  Image as ImageIcon,
+  User as UserIcon
 } from "lucide-react";
 import {
   LineChart,
@@ -69,11 +70,14 @@ import {
 
 // Component imports for integration
 import HelpGuide from "./HelpGuide";
-import RiskRewardCalculator from "./RiskRewardCalculator";
 import WeeklyGoals from "./WeeklyGoals";
 import StreakTracker from "./StreakTracker";
 import { useStreakCalculator } from "../hooks/useStreakCalculator";
 import AnalyticsDashboard from "./Analytics/AnalyticsDashboard";
+import { quickExportPDF } from "../utils/pdfExport";
+import ServiceWorkerRegistrar from "./ServiceWorkerRegistrar";
+import CommunityLeaderboard from "./CommunityLeaderboard";
+import ShareWithLLM from "./AIInsights";
 
 // Phase 1-5: New Component Imports
 import SettingsManager from "./Settings/SettingsManager";
@@ -96,6 +100,8 @@ import ImportWizard from "./Import/ImportWizard";
 import WelcomeModal from "./Onboarding/WelcomeModal";
 import OnboardingChecklist from "./Onboarding/OnboardingChecklist";
 import FlipModeSettings from "./FlipMode/FlipModeSettings";
+import AccountManager from "./Account/AccountManager";
+import VirtualizedTradeTable from "./VirtualizedTradeTable";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -107,7 +113,7 @@ import { registerServiceWorker, setupInstallPrompt } from "../utils/pwa";
 // Types
 import { Tag } from "../types/tags";
 import { Strategy } from "../types/strategies";
-import { TradingAccount } from "../types";
+import { TradingAccount, Trade, BalanceOperation } from "../types";
 import { MT5AccountInfo } from "../utils/importPipeline";
 
 /* ---------------- Firebase (inlined) ---------------- */
@@ -132,6 +138,7 @@ import {
   setDoc,
   deleteDoc,
   onSnapshot,
+  writeBatch,
   type Firestore,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, type FirebaseStorage } from "firebase/storage";
@@ -189,18 +196,11 @@ type BrokerInfo = {
 };
 type BrokerMap = Record<string, BrokerInfo>;
 
-type TradeSetup =
-  | "Breakout" | "Pullback" | "Reversal" | "Range" | "Trend Following"
-  | "SMC" | "ICT" | "The Strat" | "CRT" | "Wyckoff" | "Elliott Wave"
-  | "Supply & Demand" | "Support & Resistance" | "Harmonic"
-  | "News" | "Scalp" | "Algo/Bot" | "Fundamental";
-
-const TRADE_SETUPS: TradeSetup[] = [
-  "Breakout", "Pullback", "Reversal", "Range", "Trend Following",
-  "SMC", "ICT", "The Strat", "CRT", "Wyckoff", "Elliott Wave",
-  "Supply & Demand", "Support & Resistance", "Harmonic",
-  "News", "Scalp", "Algo/Bot", "Fundamental"
-];
+// Simplified universal setups + Custom option
+const TRADE_SETUPS = [
+  "Breakout", "Pullback", "Reversal", "Trend",
+  "Range", "Scalp", "News", "Other"
+] as const;
 
 type TradeInput = {
   pair: string;
@@ -208,7 +208,7 @@ type TradeInput = {
   entry: string;
   exit: string;
   lots: string; // User override for lots
-  setup: TradeSetup;
+  setup: string; // Can be preset or custom
   emotion: string;
   notes: string;
 };
@@ -239,6 +239,7 @@ type GlobalSettings = {
   targetBalance?: number;
   showWeeklyGoals?: boolean;
   showStreakDetails?: boolean;
+  tradingStyle?: 'scalper' | 'day' | 'swing';
 };
 
 type PairMeta = { placeholder: string; step: number; multiplier: number; isYen?: boolean; isGold?: boolean; isCrypto?: boolean; isIndex?: boolean };
@@ -265,16 +266,6 @@ const TIERS: Tier[] = [
   { name: "MASTERY", min: 1000, max: 2499, pairs: 8, suggestedPairs: "Forex, Gold, Indices", desc: "Full system mastery" },
   { name: "ELITE", min: 2500, max: 4999, pairs: 10, suggestedPairs: "Any Liquid Asset", desc: "Elite trader status" },
   { name: "LEGEND", min: 5000, max: 999999, pairs: 12, suggestedPairs: "Full Market Access", desc: "Legendary performance" },
-];
-
-const TRADE_TEMPLATES = [
-  { name: "EURUSD Breakout", pair: "EURUSD", setup: "Breakout" as TradeSetup },
-  { name: "Gold SMC Sweep", pair: "XAUUSD", setup: "SMC" as TradeSetup },
-  { name: "ICT Silver Bullet", pair: "GBPUSD", setup: "ICT" as TradeSetup },
-  { name: "Indices Scalp", pair: "US30", setup: "Scalp" as TradeSetup },
-  { name: "Bitcoin CRT", pair: "BTCUSD", setup: "CRT" as TradeSetup },
-  { name: "Wyckoff Spring", pair: "EURUSD", setup: "Wyckoff" as TradeSetup },
-  { name: "Strat 2-1-2", pair: "SPX500", setup: "The Strat" as TradeSetup },
 ];
 
 const TAX_BRACKETS_2025: TaxBracket[] = [
@@ -592,7 +583,7 @@ const activeTaxRate = (is1256: boolean, bracketRate: number) =>
   is1256 ? 0.60 * 0.15 + 0.40 * bracketRate : bracketRate;
 
 /* ---------------- UI Components ---------------- */
-const WithdrawalAlert: React.FC<{ balance: number }> = ({ balance }) => {
+const WithdrawalAlert = React.memo<{ balance: number }>(({ balance }) => {
   const milestones = [100000, 250000, 500000, 1000000];
   const milestone = [...milestones].reverse().find(m => balance >= m);
   if (!milestone) return null;
@@ -619,39 +610,30 @@ const WithdrawalAlert: React.FC<{ balance: number }> = ({ balance }) => {
       </button>
     </div>
   );
-};
+});
 
-const PerformanceSummary: React.FC<{ metrics: RiskMetrics }> = ({ metrics }) => (
+const PerformanceSummary = React.memo<{ metrics: RiskMetrics }>(({ metrics }) => (
   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
-      <div className="text-sm text-slate-500 dark:text-slate-400">Win Rate</div>
-      <div className="text-2xl font-bold text-slate-900 dark:text-white">{metrics.winRate.toFixed(1)}%</div>
+    <div className="glass-card stat-card p-5 rounded-xl" style={{ animationDelay: '0ms' }}>
+      <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Win Rate</div>
+      <div className="text-3xl font-bold text-slate-900 dark:text-white">{metrics.winRate.toFixed(1)}%</div>
     </div>
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
-      <div className="text-sm text-slate-500 dark:text-slate-400">Profit Factor</div>
-      <div className="text-2xl font-bold text-slate-900 dark:text-white">{Number.isFinite(metrics.profitFactor) ? metrics.profitFactor.toFixed(2) : "∞"}</div>
+    <div className="glass-card stat-card p-5 rounded-xl" style={{ animationDelay: '50ms' }}>
+      <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Profit Factor</div>
+      <div className="text-3xl font-bold text-slate-900 dark:text-white">{Number.isFinite(metrics.profitFactor) ? metrics.profitFactor.toFixed(2) : "∞"}</div>
     </div>
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
-      <div className="text-sm text-slate-500 dark:text-slate-400">Streak (Cur/Best)</div>
-      <div className="text-2xl font-bold flex items-baseline gap-2">
-        <span className={metrics.currentStreak > 0 ? "text-green-500" : metrics.currentStreak < 0 ? "text-red-500" : "text-slate-500"}>
-          {metrics.currentStreak > 0 ? "+" : ""}{metrics.currentStreak}
-        </span>
-        <span className="text-sm text-slate-400 font-normal dark:text-slate-300">/ +{metrics.bestStreak}</span>
-      </div>
+    <div className="glass-card stat-card p-5 rounded-xl" style={{ animationDelay: '100ms' }}>
+      <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Best Trade</div>
+      <div className="text-3xl font-bold text-green-500">{fmtUSD(metrics.largestWin)}</div>
     </div>
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
-      <div className="text-sm text-slate-500 dark:text-slate-400">Best Trade</div>
-      <div className="text-2xl font-bold text-green-500">{fmtUSD(metrics.largestWin)}</div>
-    </div>
-    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10 shadow-sm">
-      <div className="text-sm text-slate-500 dark:text-slate-400">Worst Trade</div>
-      <div className="text-2xl font-bold text-red-500">{fmtUSD(metrics.largestLoss)}</div>
+    <div className="glass-card stat-card p-5 rounded-xl" style={{ animationDelay: '150ms' }}>
+      <div className="text-sm text-slate-500 dark:text-slate-400 mb-1">Worst Trade</div>
+      <div className="text-3xl font-bold text-red-500">{fmtUSD(metrics.largestLoss)}</div>
     </div>
   </div>
-);
+));
 
-const EnhancedTradeHeatmap: React.FC<{ trades: Trade[] }> = ({ trades }) => {
+const EnhancedTradeHeatmap = React.memo<{ trades: Trade[] }>(({ trades }) => {
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const hourData = hours.map((hour) => {
     const hourTrades = trades.filter((t) => {
@@ -713,9 +695,9 @@ const EnhancedTradeHeatmap: React.FC<{ trades: Trade[] }> = ({ trades }) => {
       <div className="mt-3 text-xs text-slate-500 dark:text-slate-400 text-center">Color = session • Size = trade count • Border = profitability</div>
     </div>
   );
-};
+});
 
-const SetupPerformanceAnalysis: React.FC<{ trades: Trade[] }> = ({ trades }) => {
+const SetupPerformanceAnalysis = React.memo<{ trades: Trade[] }>(({ trades }) => {
   const setupGroups = trades.reduce((acc, trade) => {
     const s = trade.setup || "Unspecified";
     if (!acc[s]) acc[s] = { count: 0, wins: 0, pnl: 0 };
@@ -755,7 +737,7 @@ const SetupPerformanceAnalysis: React.FC<{ trades: Trade[] }> = ({ trades }) => 
       </div>
     </div>
   );
-};
+});
 
 const PairPerformanceSummary: React.FC<{ trades: Trade[] }> = ({ trades }) => {
   const pairStats = trades.reduce((acc, trade) => {
@@ -968,20 +950,25 @@ const CollapsibleSection: React.FC<{
 }> = ({ title, icon: Icon, children, defaultOpen = true }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden mb-6 transition-all shadow-sm">
+    <div className="glass-card rounded-2xl overflow-hidden mb-6 transition-all duration-300 hover:shadow-xl">
       <button
         onClick={() => setIsOpen((s) => !s)}
-        className="w-full flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors focus:outline-none"
+        className="w-full flex justify-between items-center p-5 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-700 hover:from-slate-100 hover:to-slate-200 dark:hover:from-slate-700 dark:hover:to-slate-600 transition-all duration-200 focus:outline-none"
         aria-label={`Toggle ${title}`}
       >
-        <div className="flex items-center gap-2 font-bold text-lg text-slate-800 dark:text-white">
-          {Icon && <Icon size={20} className="text-blue-600 dark:text-blue-400" />}
+        <div className="flex items-center gap-3 font-bold text-lg text-slate-800 dark:text-white">
+          {Icon && <Icon size={22} className="text-blue-500 dark:text-blue-400" />}
           {title}
         </div>
-        {isOpen ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+        <div className={`transition-transform duration-300 ${isOpen ? 'rotate-180' : 'rotate-0'}`}>
+          <ChevronDown size={20} className="text-slate-400" />
+        </div>
       </button>
-      <div style={{ height: isOpen ? "auto" : 0, overflow: "hidden" }}>
-        <div className="p-6 border-t border-slate-200 dark:border-slate-700">{children}</div>
+      <div
+        className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-[5000px] opacity-100' : 'max-h-0 opacity-0'}`}
+        style={{ overflow: 'hidden' }}
+      >
+        <div className="p-6 border-t border-slate-200/50 dark:border-slate-700/50">{children}</div>
       </div>
     </div>
   );
@@ -1879,7 +1866,8 @@ const AQTApp: React.FC = () => {
     startBalance: 100,
     targetBalance: 1000,
     showWeeklyGoals: true,
-    showStreakDetails: false
+    showStreakDetails: false,
+    tradingStyle: 'day'
   });
   const [isFlipMode, setIsFlipMode] = useState(false);
 
@@ -1887,6 +1875,8 @@ const AQTApp: React.FC = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showRRCalculator, setShowRRCalculator] = useState(false);
+  const [showCommunity, setShowCommunity] = useState(false);
+  const [showShareLLM, setShowShareLLM] = useState(false);
   const [weeklyGoal, setWeeklyGoal] = useState(200);
   const [monthlyGoal, setMonthlyGoal] = useState(800);
 
@@ -1925,12 +1915,21 @@ const AQTApp: React.FC = () => {
   // Multi-Account State
   const [accounts, setAccounts] = useState<TradingAccount[]>([]);
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
+  const [showAccountManager, setShowAccountManager] = useState(false);
+  const [balanceOperations, setBalanceOperations] = useState<BalanceOperation[]>([]);
 
   // Onboarding State
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(true);
   const [hasViewedAnalytics, setHasViewedAnalytics] = useState(false);
   const [showFlipModeSettings, setShowFlipModeSettings] = useState(false);
+
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'ts', direction: 'desc' });
+
+  // Undo Stack for deleted trades
+  const [undoStack, setUndoStack] = useState<{ trade: Trade; originalBalance: number; timeoutId?: NodeJS.Timeout }[]>([]);
+  const [showUndoToast, setShowUndoToast] = useState<{ visible: boolean; tradePair?: string }>({ visible: false });
 
   // Refs
   const entryRef = useRef<HTMLInputElement>(null);
@@ -1976,7 +1975,28 @@ const AQTApp: React.FC = () => {
 
   // Sync Settings from Firebase (Read)
   useEffect(() => {
-    if (!firebaseReady || !db || !user) return;
+    // First, try to load from localStorage as fallback
+    if (typeof window !== 'undefined') {
+      try {
+        const savedSettings = localStorage.getItem('aqt_settings');
+        if (savedSettings) {
+          const data = JSON.parse(savedSettings);
+          if (data.balance !== undefined) { setBalance(data.balance); setBalanceInput(String(data.balance)); }
+          if (data.broker !== undefined) setBroker(data.broker);
+          if (data.leverage !== undefined) setLeverage(data.leverage);
+          if (data.safeMode !== undefined) setSafeMode(data.safeMode);
+          if (data.darkMode !== undefined) setDarkMode(data.darkMode);
+          if (data.globalSettings !== undefined) setGlobalSettings(data.globalSettings);
+        }
+      } catch (e) {
+        console.warn('[AQT] Failed to load settings from localStorage:', e);
+      }
+    }
+
+    if (!firebaseReady || !db || !user) {
+      setIsLoading(false);
+      return;
+    }
     const settingsRef = doc(db, "artifacts", APP_ID, "users", user.uid, "data", "settings");
     const unsubscribe = onSnapshot(settingsRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -1995,10 +2015,8 @@ const AQTApp: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // Sync Settings to Firebase (Write - Debounced)
+  // Sync Settings to Firebase (Write - Debounced) + localStorage fallback
   useEffect(() => {
-    if (!firebaseReady || !db || !user) return;
-    const settingsRef = doc(db, "artifacts", APP_ID, "users", user.uid, "data", "settings");
     const payload = {
       balance,
       broker,
@@ -2009,11 +2027,55 @@ const AQTApp: React.FC = () => {
       darkMode,
       globalSettings
     };
+
+    // Always save to localStorage as fallback
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('aqt_settings', JSON.stringify(payload));
+      } catch (e) {
+        console.warn('[AQT] Failed to save settings to localStorage:', e);
+      }
+    }
+
+    // Also sync to Firebase if available
+    if (!firebaseReady || !db || !user) return;
+    const settingsRef = doc(db, "artifacts", APP_ID, "users", user.uid, "data", "settings");
     const t = setTimeout(() => {
       setDoc(settingsRef, payload, { merge: true }).catch(e => console.error("Sync error", e));
     }, 1000);
     return () => clearTimeout(t);
   }, [user, balance, broker, leverage, safeMode, taxBracketIndex, isSection1256, darkMode, globalSettings]);
+
+  // Sync Accounts to Firebase (Write - Debounced)
+  useEffect(() => {
+    if (!firebaseReady || !db || !user || accounts.length === 0) return;
+    const accountsRef = doc(db, "artifacts", APP_ID, "users", user.uid, "data", "accounts");
+    const t = setTimeout(() => {
+      setDoc(accountsRef, { list: accounts }, { merge: true }).catch(e => console.error("Accounts sync error", e));
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [user, accounts]);
+
+  // Sync Accounts from Firebase (Read)
+  useEffect(() => {
+    if (!firebaseReady || !db || !user) return;
+    const accountsRef = doc(db, "artifacts", APP_ID, "users", user.uid, "data", "accounts");
+    const unsubscribe = onSnapshot(accountsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.list && Array.isArray(data.list) && data.list.length > 0) {
+          // Merge with local? Or replace? 
+          // For now, replace if remote has data, but handle ID conflicts?
+          // Replacing is safest for sync, assuming single source of truth behavior
+          setAccounts(data.list);
+          if (!activeAccountId && data.list.length > 0) {
+            setActiveAccountId(data.list[0].id);
+          }
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   // Standard Effects
   useEffect(() => {
@@ -2073,7 +2135,7 @@ const AQTApp: React.FC = () => {
 
   // Session alerts
   useEffect(() => {
-    if (!alertsEnabled || !("Notification" in window)) return;
+    if (!alertsEnabled || globalSettings.tradingStyle === 'swing' || !("Notification" in window)) return;
     const sessionOpen = (tz: string, openH: number) => {
       const nowTz = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
       return nowTz.getHours() === openH && nowTz.getMinutes() === 0 && nowTz.getSeconds() === 0;
@@ -2132,36 +2194,88 @@ const AQTApp: React.FC = () => {
   }, [newTrade, brokerMinLot]);
 
   const todayKey = useMemo(() => localDayKey(currentTime), [currentTime]);
-  const todayPnl = useMemo(() => trades.filter(t => t.date === todayKey).reduce((s, t) => s + t.pnl, 0), [trades, todayKey]);
-  const totalPnL = useMemo(() => trades.reduce((acc, t) => acc + t.pnl, 0), [trades]);
+
+  // Filter trades by active account
+  const accountTrades = useMemo(() => {
+    if (!activeAccountId) return trades;
+    return trades.filter(t => (t as any).accountId === activeAccountId);
+  }, [trades, activeAccountId]);
+
+  const todayPnl = useMemo(() => accountTrades.filter(t => t.date === todayKey).reduce((s, t) => s + t.pnl, 0), [accountTrades, todayKey]);
+  const totalPnL = useMemo(() => accountTrades.reduce((acc, t) => acc + t.pnl, 0), [accountTrades]);
 
   const balanceHistory = useMemo(() => {
-    const baseline = round2(balance - totalPnL);
-    const points = [{ trade: 0, balance: baseline }];
-    for (let i = trades.length - 1; i >= 0; i--) {
-      const prev = points[points.length - 1].balance;
-      points.push({ trade: points.length, balance: round2(prev + trades[i].pnl) });
-    }
-    return points;
-  }, [trades, balance, totalPnL]);
+    // If we have an active account with a starting balance, use it as baseline
+    let startBal = activeAccount?.startingBalance;
 
-  const riskMetrics = useMemo(() => calculateRiskMetrics(trades, balanceHistory), [trades, balanceHistory]);
+    // If no specific starting balance but we have trades, try to derive from current balance
+    if (!startBal && balance > 0) {
+      startBal = round2(balance - totalPnL);
+    }
+
+    // Default to global setting or 1000 if all else fails
+    const baseline = startBal || globalSettings.startBalance || 1000;
+
+    const points = [{ trade: 0, balance: baseline }];
+    // Sort trades by timestamp for accurate history
+    const sortedTrades = [...accountTrades].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+    let runningBal = baseline;
+    sortedTrades.forEach((t, i) => {
+      runningBal += t.pnl;
+      points.push({ trade: i + 1, balance: round2(runningBal) });
+    });
+    return points;
+  }, [accountTrades, balance, totalPnL, activeAccount, globalSettings.startBalance]);
+
+  const riskMetrics = useMemo(() => calculateRiskMetrics(accountTrades, balanceHistory), [accountTrades, balanceHistory]);
+
+  // Recovery Mode Detection
+  const startingBalanceRef = activeAccount?.startingBalance || globalSettings.startBalance || 1000;
+  const isInRecoveryMode = balance < startingBalanceRef;
+  const drawdownAmount = isInRecoveryMode ? round2(startingBalanceRef - balance) : 0;
+  const drawdownPercent = isInRecoveryMode ? round2((drawdownAmount / startingBalanceRef) * 100) : 0;
+  const recoveryNeeded = isInRecoveryMode ? round2((drawdownAmount / balance) * 100) : 0; // % gain needed to recover
 
   const { winsCount, lossesCount } = useMemo(() => {
-    let w = 0, l = 0; for (const t of trades) { if (t.pnl > 0) w++; else if (t.pnl < 0) l++; }
+    let w = 0, l = 0; for (const t of accountTrades) { if (t.pnl > 0) w++; else if (t.pnl < 0) l++; }
     return { winsCount: w, lossesCount: l };
-  }, [trades]);
+  }, [accountTrades]);
 
   const filteredTrades = useMemo(() => {
     const min = filters.minPnl ? parseFloat(filters.minPnl) : -Infinity;
     const max = filters.maxPnl ? parseFloat(filters.maxPnl) : Infinity;
-    return trades.filter((t) => {
+    const result = accountTrades.filter((t) => {
       if (filters.pair && t.pair !== filters.pair.toUpperCase()) return false;
       if (filters.direction && t.direction !== filters.direction) return false;
       if (t.pnl < min || t.pnl > max) return false;
       return true;
     });
-  }, [trades, filters]);
+
+    // Sort logic
+    if (sortConfig) {
+      result.sort((a, b) => {
+        let aVal: any = a[sortConfig.key as keyof Trade];
+        let bVal: any = b[sortConfig.key as keyof Trade];
+
+        // Handle null/undefined
+        if (aVal === undefined || aVal === null) aVal = "";
+        if (bVal === undefined || bVal === null) bVal = "";
+
+        // If string, case insensitive
+        if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+        if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    } else {
+      result.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    }
+
+    return result;
+  }, [accountTrades, filters, sortConfig]);
 
   const filteredTotal = useMemo(() => filteredTrades.reduce((s, t) => s + t.pnl, 0), [filteredTrades]);
 
@@ -2183,6 +2297,16 @@ const AQTApp: React.FC = () => {
   const taxRate = activeTaxRate(isSection1256, bracketRate);
   const estimatedTax = Math.max(0, totalPnL) * taxRate;
   const netPocket = totalPnL - estimatedTax;
+
+  // Sorting Handler
+  const handleSort = (key: string) => {
+    setSortConfig(current => {
+      if (current?.key === key) {
+        return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, direction: 'desc' };
+    });
+  };
 
   // --- Auth actions (Google + Twitter + Sign out) ---
   const signInWithGoogle = async () => {
@@ -2274,23 +2398,63 @@ const AQTApp: React.FC = () => {
     setNewTrade(initialTradeState);
   }, [isFormValid, user, newTrade, pipValueForLotEffective, effectiveLots, balance, initialTradeState, broker]);
 
-  const deleteTrade = useCallback(async (id: string) => {
+  const deleteTrade = useCallback(async (id: string, skipConfirm = false) => {
     const trade = trades.find((t) => t.id === id);
-    if (trade && typeof window !== "undefined" && window.confirm("Delete trade? Balance will be reverted.")) {
-      const newBalance = round2(balance - trade.pnl);
-      setBalance(newBalance);
-      setBalanceInput(String(newBalance));
-      setTrades((prev) => prev.filter((t) => t.id !== id));
+    if (!trade) return;
 
+    // Skip confirm if already confirmed (from VirtualizedTradeTable)
+    if (!skipConfirm && typeof window !== "undefined" && !window.confirm("Delete trade? You can undo within 5 seconds.")) {
+      return;
+    }
+
+    const originalBalance = balance;
+    const newBalance = round2(balance - trade.pnl);
+
+    // Optimistic UI update (soft delete)
+    setBalance(newBalance);
+    setBalanceInput(String(newBalance));
+    setTrades((prev) => prev.filter((t) => t.id !== id));
+
+    // Show undo toast
+    setShowUndoToast({ visible: true, tradePair: trade.pair });
+
+    // Set timeout to permanently delete from Firebase after 5 seconds
+    const timeoutId = setTimeout(async () => {
+      // Remove from undo stack
+      setUndoStack((prev) => prev.filter((item) => item.trade.id !== id));
+      setShowUndoToast({ visible: false });
+
+      // Actually delete from Firebase
       if (firebaseReady && db && user) {
         try {
           await deleteDoc(doc(db, 'artifacts', APP_ID, 'users', user.uid, 'trades', id));
         } catch (e) {
-          console.error("Failed to delete trade", e);
+          console.error("Failed to delete trade from Firebase", e);
         }
       }
-    }
+    }, 5000);
+
+    // Add to undo stack
+    setUndoStack((prev) => [...prev, { trade, originalBalance, timeoutId }]);
   }, [user, trades, balance]);
+
+  // Undo last deleted trade
+  const undoDelete = useCallback(() => {
+    const lastItem = undoStack[undoStack.length - 1];
+    if (!lastItem) return;
+
+    // Clear the pending delete timeout
+    if (lastItem.timeoutId) clearTimeout(lastItem.timeoutId);
+
+    // Restore trade and balance
+    setTrades((prev) => [lastItem.trade, ...prev].sort((a, b) => (b.ts || 0) - (a.ts || 0)));
+    setBalance(lastItem.originalBalance);
+    setBalanceInput(String(lastItem.originalBalance));
+
+    // Remove from undo stack
+    setUndoStack((prev) => prev.slice(0, -1));
+    setShowUndoToast({ visible: false });
+  }, [undoStack]);
 
   const copyTrade = useCallback((trade: Trade) => {
     setNewTrade({
@@ -2640,6 +2804,9 @@ const AQTApp: React.FC = () => {
         <ErrorBoundary><TradingViewTicker darkMode={darkMode} /></ErrorBoundary>
       </div>
 
+      {/* Service Worker for Offline Mode */}
+      <ServiceWorkerRegistrar />
+
       <div className="max-w-7xl mx-auto space-y-4 p-4" id="dashboard">
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-center py-2">
@@ -2658,7 +2825,12 @@ const AQTApp: React.FC = () => {
                   </span>
                 )}
               </h1>
-              <p className="text-slate-600 dark:text-blue-300 text-sm">Adaptive Quantitative Trading System</p>
+              <p className="text-slate-600 dark:text-blue-300 text-sm">
+                Adaptive Quantitative Trading System
+                {(activeAccount?.name || user?.displayName) && (
+                  <span className="hidden sm:inline"> • Welcome, <span className="font-semibold text-blue-600 dark:text-blue-400">{activeAccount?.name?.split(' ')[0] || user?.displayName?.split(' ')[0]}</span></span>
+                )}
+              </p>
             </div>
 
             {/* Sign-in buttons */}
@@ -2711,31 +2883,42 @@ const AQTApp: React.FC = () => {
             {/* Primary Action */}
             <button
               onClick={() => setIsFlipMode(true)}
-              className="px-4 py-2 rounded-lg bg-gradient-to-r from-green-600 to-blue-600 text-white hover:from-green-500 hover:to-blue-500 transition-all flex items-center gap-2 font-bold text-sm shadow-md hover:shadow-lg transform active:scale-95"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-600 text-white hover:from-emerald-400 hover:via-blue-400 hover:to-purple-500 transition-all flex items-center gap-2 font-bold text-sm shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105 active:scale-95"
               title="Switch to Flip Mode"
             >
-              <Zap size={16} />
-              Flip Mode
+              <Zap size={16} className="animate-pulse" />
+              <span className="hidden sm:inline">Flip Mode</span>
             </button>
 
             {/* Divider */}
             <div className="h-6 w-px bg-slate-300 dark:bg-slate-700 mx-1 hidden sm:block"></div>
 
-            {/* Tools */}
-            <div className="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200 dark:border-white/5">
-              <button onClick={() => setShowHelp(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-purple-600 dark:text-purple-400 transition-all" title="Help Guide"><HelpCircle size={18} /></button>
-              <button onClick={() => setShowAnalytics(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 transition-all" title="Analytics Dashboard"><BarChart2 size={18} /></button>
-              <button onClick={() => setShowRRCalculator(true)} className="p-2 rounded-full hover:bg-white dark:hover:bg-slate-700 text-amber-600 dark:text-amber-400 transition-all" title="Risk/Reward Calculator"><Calculator size={18} /></button>
+            {/* Tools - Hidden on mobile */}
+            <div className="hidden md:flex glass-card rounded-full p-1.5 gap-1">
+              <button onClick={() => setShowHelp(true)} className="p-2.5 rounded-full hover:bg-white/20 dark:hover:bg-white/10 text-purple-500 dark:text-purple-400 transition-all hover:scale-110 hover:shadow-lg hover:shadow-purple-500/20" title="Help Guide"><HelpCircle size={20} /></button>
+              <button onClick={() => setShowAnalytics(true)} className="p-2.5 rounded-full hover:bg-white/20 dark:hover:bg-white/10 text-blue-500 dark:text-blue-400 transition-all hover:scale-110 hover:shadow-lg hover:shadow-blue-500/20" title="Analytics Dashboard"><BarChart2 size={20} /></button>
+              <button onClick={() => setShowCommunity(true)} className="p-2.5 rounded-full hover:bg-white/20 dark:hover:bg-white/10 text-amber-500 dark:text-amber-400 transition-all hover:scale-110 hover:shadow-lg hover:shadow-amber-500/20" title="Community Leaderboard"><Trophy size={20} /></button>
+              <button onClick={() => setShowShareLLM(true)} className="p-2.5 rounded-full hover:bg-white/20 dark:hover:bg-white/10 text-pink-500 dark:text-pink-400 transition-all hover:scale-110 hover:shadow-lg hover:shadow-pink-500/20" title="Share with AI"><Brain size={20} /></button>
             </div>
 
-            {/* Import Button */}
-            <button
-              onClick={() => setShowImportWizard(true)}
-              className="p-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg"
-              title="Import Trades (MT4/MT5)"
-            >
-              <Upload size={18} />
-            </button>
+
+            {/* Account & Import - Hidden on mobile */}
+            <div className="hidden sm:flex gap-2">
+              <button
+                onClick={() => setShowAccountManager(true)}
+                className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 text-blue-500 dark:text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 transition-all border border-blue-300/30 dark:border-blue-500/20 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/20"
+                title="Account Manager"
+              >
+                <UserIcon size={20} />
+              </button>
+              <button
+                onClick={() => setShowImportWizard(true)}
+                className="p-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-400 hover:to-emerald-500 transition-all shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-110"
+                title="Import Trades (MT4/MT5)"
+              >
+                <Upload size={20} />
+              </button>
+            </div>
 
             {/* Settings */}
             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200 dark:border-white/5">
@@ -2756,7 +2939,27 @@ const AQTApp: React.FC = () => {
               {isMoreMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setIsMoreMenuOpen(false)}></div>
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 py-2 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 py-2 animate-in fade-in zoom-in-95 duration-200">
+                    {/* Mobile-only: Account & Import */}
+                    <div className="sm:hidden">
+                      <button onClick={() => { setIsMoreMenuOpen(false); setShowAccountManager(true); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                        <UserIcon size={16} /> Accounts
+                      </button>
+                      <button onClick={() => { setIsMoreMenuOpen(false); setShowImportWizard(true); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                        <Upload size={16} /> Import Trades
+                      </button>
+                      <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                    </div>
+                    {/* Mobile-only: Tools */}
+                    <div className="md:hidden">
+                      <button onClick={() => { setIsMoreMenuOpen(false); setShowHelp(true); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                        <HelpCircle size={16} /> Help Guide
+                      </button>
+                      <button onClick={() => { setIsMoreMenuOpen(false); setShowAnalytics(true); }} className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2">
+                        <BarChart2 size={16} /> Analytics
+                      </button>
+                      <div className="h-px bg-slate-100 dark:bg-slate-700 my-1"></div>
+                    </div>
                     <button
                       onClick={() => {
                         setIsMoreMenuOpen(false);
@@ -2774,6 +2977,15 @@ const AQTApp: React.FC = () => {
                       className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
                     >
                       <BarChart2 size={16} /> Export CSV
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsMoreMenuOpen(false);
+                        quickExportPDF();
+                      }}
+                      className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                    >
+                      <Download size={16} /> Export PDF
                     </button>
                     <label className="w-full text-left px-4 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center gap-2 cursor-pointer">
                       <Upload size={16} /> Restore Data
@@ -2801,6 +3013,36 @@ const AQTApp: React.FC = () => {
 
         {/* ALERTS */}
         <WithdrawalAlert balance={balance} />
+
+        {/* RECOVERY MODE BANNER */}
+        {isInRecoveryMode && (
+          <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-red-600/20 to-orange-600/20 border-2 border-red-500/50 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-red-500/20 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="text-red-500" size={24} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-red-400 flex items-center gap-2">
+                    <Flame size={18} /> Recovery Mode Active
+                  </h3>
+                  <p className="text-sm text-red-300/80">Account is {drawdownPercent.toFixed(1)}% below starting balance</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="text-center">
+                  <div className="text-xs text-red-400 uppercase font-bold">Drawdown</div>
+                  <div className="text-xl font-bold text-red-400">-{fmtUSD(drawdownAmount)}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-orange-400 uppercase font-bold">To Recover</div>
+                  <div className="text-xl font-bold text-orange-400">+{recoveryNeeded.toFixed(1)}%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* DEMO DATA BANNER */}
         {trades.length === 0 && showDemoBanner && !isDemoMode && (
@@ -2840,7 +3082,19 @@ const AQTApp: React.FC = () => {
 
         {/* GOALS & BENCHMARKS */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <DailyGoalTracker current={todayPnl} target={dailyGoal} />
+          {globalSettings.tradingStyle === 'swing' ? (
+            /* Swing Mode: Weekly Focus Instead of Daily */
+            <div className="bg-gradient-to-br from-purple-500/20 to-indigo-500/20 rounded-xl p-4 border border-purple-500/30">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar size={18} className="text-purple-400" />
+                <span className="text-xs text-purple-400 uppercase font-bold tracking-wider">Weekly Focus</span>
+              </div>
+              <div className="text-2xl font-bold text-white">{fmtUSD(weeklyGoal)}</div>
+              <div className="text-xs text-purple-300 mt-1">Long-term growth target</div>
+            </div>
+          ) : (
+            <DailyGoalTracker current={todayPnl} target={dailyGoal} />
+          )}
           <PerformanceBenchmarks winRate={riskMetrics.winRate} profitFactor={riskMetrics.profitFactor} tradesCount={trades.length} />
           <div className="bg-white dark:bg-white/5 rounded-xl p-4 border border-slate-200 dark:border-white/10 flex items-center justify-between">
             <div>
@@ -2857,8 +3111,8 @@ const AQTApp: React.FC = () => {
         {/* MILESTONES */}
         <PerformanceMilestones trades={trades} balance={balance} />
 
-        {/* WEEKLY & MONTHLY GOALS */}
-        {globalSettings.showWeeklyGoals && (
+        {/* WEEKLY & MONTHLY GOALS - Always visible in Swing mode */}
+        {(globalSettings.showWeeklyGoals || globalSettings.tradingStyle === 'swing') && (
           <WeeklyGoals
             trades={trades}
             weeklyGoal={weeklyGoal}
@@ -2958,20 +3212,31 @@ const AQTApp: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-gradient-to-br dark:from-slate-700/50 dark:to-slate-800/50 rounded-xl p-6 border border-slate-200 dark:border-white/10 relative overflow-hidden shadow-sm dark:shadow-none">
-            <div className="flex justify-between items-start mb-4 relative z-10">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
-                <Calculator size={20} /> Tax Est.
-                <span className="ml-2 text-[10px] text-slate-400 font-normal">(estimate; excludes state taxes)</span>
-              </h3>
-              <button onClick={() => setIsSection1256(!isSection1256)} className="text-[10px] px-2 py-1 rounded border border-slate-500">Mode</button>
+          {globalSettings.tradingStyle === 'scalper' ? (
+            <div className="bg-white dark:bg-gradient-to-br dark:from-slate-700/50 dark:to-slate-800/50 rounded-xl p-6 border border-slate-200 dark:border-white/10 relative overflow-hidden shadow-sm dark:shadow-none">
+              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-white"><Zap size={20} /> Scalper Stats</h3>
+              <div className="space-y-3 relative z-10 text-sm">
+                <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Pip Value ({effectiveLots}L)</span><span className="font-mono text-blue-600 dark:text-blue-200">{fmtUSD(pipValueForLotEffective)}</span></div>
+                <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Spread Impact</span><span className="text-amber-500 font-bold">High Priority</span></div>
+                <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Recent Win Rate</span><span className="font-bold text-green-500 dark:text-green-400">{((winsCount / (Math.max(1, winsCount + lossesCount))) * 100).toFixed(0)}%</span></div>
+              </div>
             </div>
-            <div className="space-y-3 relative z-10 text-sm">
-              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Gross P&L</span><span className={totalPnL >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>{fmtUSD(totalPnL)}</span></div>
-              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span title="Estimated based on filing status & location">Est. Tax ({(taxRate * 100).toFixed(1)}%)</span><span className="text-red-500 dark:text-red-300">{fmtUSD(-estimatedTax)}</span></div>
-              <div className="border-t border-slate-200 dark:border-white/20 pt-2 flex justify-between"><span className="font-bold text-slate-800 dark:text-white">Net Pocket</span><span className={`font-bold text-lg ${netPocket >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{fmtUSD(netPocket)}</span></div>
+          ) : (
+            <div className="bg-white dark:bg-gradient-to-br dark:from-slate-700/50 dark:to-slate-800/50 rounded-xl p-6 border border-slate-200 dark:border-white/10 relative overflow-hidden shadow-sm dark:shadow-none">
+              <div className="flex justify-between items-start mb-4 relative z-10">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                  <Calculator size={20} /> Tax Est.
+                  <span className="ml-2 text-[10px] text-slate-400 font-normal">(estimate; excludes state taxes)</span>
+                </h3>
+                <button onClick={() => setIsSection1256(!isSection1256)} className="text-[10px] px-2 py-1 rounded border border-slate-500">Mode</button>
+              </div>
+              <div className="space-y-3 relative z-10 text-sm">
+                <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Gross P&L</span><span className={totalPnL >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}>{fmtUSD(totalPnL)}</span></div>
+                <div className="flex justify-between text-slate-600 dark:text-slate-300"><span title="Estimated based on filing status & location">Est. Tax ({(taxRate * 100).toFixed(1)}%)</span><span className="text-red-500 dark:text-red-300">{fmtUSD(-estimatedTax)}</span></div>
+                <div className="border-t border-slate-200 dark:border-white/20 pt-2 flex justify-between"><span className="font-bold text-slate-800 dark:text-white">Net Pocket</span><span className={`font-bold text-lg ${netPocket >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{fmtUSD(netPocket)}</span></div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* DEEP ANALYTICS */}
@@ -3029,33 +3294,13 @@ const AQTApp: React.FC = () => {
 
         {/* ENTRY */}
         <CollapsibleSection title="Trade Entry" icon={DollarSign} defaultOpen={true}>
-          <div className="flex flex-col md:flex-row gap-4 mb-4 pb-4 border-b border-slate-200 dark:border-white/10">
-            <div className="flex-1">
-              <label className="text-xs text-slate-500 mb-1 block">Quick Fill Template</label>
-              <div className="flex gap-2">
-                <select onChange={(e) => e.target.value && applyTemplate(e.target.value)} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-2 text-sm dark:text-white" defaultValue="">
-                  <option value="" disabled>Select...</option>
-                  {TRADE_TEMPLATES.map((t) => <option key={t.name} value={t.name}>{t.name}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-slate-500 mb-1 block">Setup Category</label>
-              <select value={newTrade.setup} onChange={(e) => setNewTrade({ ...newTrade, setup: e.target.value as TradeSetup })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-2 text-sm dark:text-white">
-                {TRADE_SETUPS.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="col-span-2 md:col-span-1"><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Pair</label><input type="text" placeholder="EURUSD" value={newTrade.pair} list={listId} onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })} onKeyDown={(e) => e.key === "Enter" && entryRef.current?.focus()} className="w-full pl-8 pr-4 py-3 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg" /><datalist id={listId}>{COMMON_PAIRS.map((p) => <option key={p} value={p} />)}</datalist></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Dir</label><select value={newTrade.direction} onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as Direction })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white"><option value="Long">Long</option><option value="Short">Short</option></select></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Entry</label><input ref={entryRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.entry} onChange={(e) => setNewTrade({ ...newTrade, entry: e.target.value })} onKeyDown={(e) => e.key === "Enter" && exitRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Exit</label><input ref={exitRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.exit} onChange={(e) => setNewTrade({ ...newTrade, exit: e.target.value })} onKeyDown={(e) => e.key === "Enter" && lotsRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
-            <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Lots</label><input ref={lotsRef} type="number" placeholder={`Rec: ${lotSize}`} step={brokerMinLot} value={newTrade.lots} onChange={(e) => setNewTrade({ ...newTrade, lots: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTrade()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" />
-              <div className="text-[10px] text-slate-500 mt-1 dark:text-slate-400">
-                {newTrade.lots ? `Override active` : `Using Rec: ${lotSize}`}
-              </div>
-            </div>
+            <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Lots</label><input ref={lotsRef} type="number" placeholder={`Rec: ${lotSize}`} step={brokerMinLot} value={newTrade.lots} onChange={(e) => setNewTrade({ ...newTrade, lots: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTrade()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
+            <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Setup</label><select value={newTrade.setup} onChange={(e) => setNewTrade({ ...newTrade, setup: e.target.value })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white">{TRADE_SETUPS.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
           </div>
           <div className="mt-4 p-3 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 flex justify-between items-center" aria-live="polite">
             <div className="text-xs text-slate-500">Live Preview (with {effectiveLots} lots):</div>
@@ -3120,92 +3365,121 @@ const AQTApp: React.FC = () => {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-blue-600 dark:text-blue-300 border-b border-slate-200 dark:border-white/10">
-                  <th scope="col" className="pb-3 pl-2 hidden sm:table-cell">Time</th>
-                  <th scope="col" className="pb-3">Pair</th>
-                  <th scope="col" className="pb-3">Dir</th>
-                  <th scope="col" className="pb-3 hidden sm:table-cell">Setup</th>
-                  <th scope="col" className="pb-3">Lots</th>
-                  <th scope="col" className="pb-3">P&L</th>
-                  <th scope="col" className="pb-3">Notes</th>
-                  <th scope="col" className="pb-3 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTrades.length === 0 && trades.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-12">
-                      <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
-                          <DollarSign className="text-blue-600 dark:text-blue-400" size={32} />
-                        </div>
-                        <h3 className="text-lg font-bold text-slate-700 dark:text-white">No Trades Yet</h3>
-                        <p className="text-slate-500 dark:text-slate-400 mb-4">Start by entering your first trade above.</p>
-                        <button
-                          onClick={() => {
-                            setNewTrade({ ...initialTradeState, pair: "EURUSD", entry: "1.0500", exit: "1.0550", lots: "1.00" });
-                            setTimeout(() => {
-                              if (typeof window !== "undefined") {
-                                window.scrollTo({ top: 0, behavior: "smooth" });
-                              }
-                            }, 100);
-                          }}
-                          className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 transition-colors"
-                        >
-                          Fill Sample Trade
-                        </button>
-                      </div>
-                    </td>
+          {/* Use VirtualizedTradeTable for large journals (100+ trades) */}
+          {trades.length >= 100 ? (
+            <div>
+              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700 dark:text-blue-300 flex items-center gap-2">
+                <Zap size={16} />
+                <span>Virtualized view enabled for {trades.length} trades (faster scrolling)</span>
+              </div>
+              <VirtualizedTradeTable
+                trades={filteredTrades as any}
+                onEdit={(id) => setNotesModalTradeId(id)}
+                onDelete={(id) => { if (window.confirm('Delete this trade?')) deleteTrade(id); }}
+                onViewNotes={(id) => setNotesModalTradeId(id)}
+                darkMode={darkMode}
+              />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-blue-600 dark:text-blue-300 border-b border-slate-200 dark:border-white/10">
+                    <th scope="col" className="pb-3 pl-2 hidden sm:table-cell cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('ts')}>
+                      <div className="flex items-center gap-1">Time {sortConfig?.key === 'ts' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                    </th>
+                    <th scope="col" className="pb-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('pair')}>
+                      <div className="flex items-center gap-1">Pair {sortConfig?.key === 'pair' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                    </th>
+                    <th scope="col" className="pb-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('direction')}>
+                      <div className="flex items-center gap-1">Dir {sortConfig?.key === 'direction' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                    </th>
+                    <th scope="col" className="pb-3 hidden sm:table-cell cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('setup')}>
+                      <div className="flex items-center gap-1">Setup {sortConfig?.key === 'setup' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                    </th>
+                    <th scope="col" className="pb-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('lots')}>
+                      <div className="flex items-center gap-1">Lots {sortConfig?.key === 'lots' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                    </th>
+                    <th scope="col" className="pb-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('pnl')}>
+                      <div className="flex items-center gap-1">P&L {sortConfig?.key === 'pnl' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                    </th>
+                    <th scope="col" className="pb-3">Notes</th>
+                    <th scope="col" className="pb-3 text-right">Action</th>
                   </tr>
-                ) : filteredTrades.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-12">
-                      <div className="flex flex-col items-center">
-                        <AlertTriangle className="text-yellow-500 mb-2" size={32} />
-                        <h3 className="text-lg font-bold text-slate-700 dark:text-white">No Matching Trades</h3>
-                        <p className="text-slate-500 dark:text-slate-400">Try adjusting your filters.</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredTrades.map((t) => (
-                    <tr key={t.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5">
-                      <td className="py-3 pl-2 text-slate-600 dark:text-white hidden sm:table-cell">{t.date} <span className="text-xs text-slate-400">{t.time}</span></td>
-                      <td className="py-3 font-bold text-slate-800 dark:text-white">{t.pair}</td>
-                      <td className="py-3"><span className={`px-2 py-0.5 rounded text-xs ${t.direction === "Long" ? "bg-green-100 text-green-700 dark:text-green-300 dark:bg-green-900/50" : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-900/50"}`}>{t.direction}</span></td>
-                      <td className="py-3 text-slate-500 dark:text-slate-400 text-xs hidden sm:table-cell">{t.setup}</td>
-                      <td className="py-3 text-slate-600 dark:text-slate-300 font-mono">{t.lots}</td>
-                      <td className={`py-3 font-bold font-mono ${t.pnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{fmtUSD(t.pnl)}</td>
-                      <td className="py-3">
-                        <button onClick={() => setNotesModalTradeId(t.id)} className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-300 hover:underline">
-                          {t.imageUrl && <ImageIcon size={14} className="text-purple-500" />}
-                          <Edit3 size={14} /> {t.notes || t.imageUrl ? "Details" : "Add"}
-                        </button>
-                      </td>
-                      <td className="py-3 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button onClick={() => copyTrade(t)} className="text-blue-400 hover:text-blue-600" aria-label="Copy"><ClipboardCopy size={14} /></button>
-                          <button onClick={() => deleteTrade(t.id)} className="text-slate-400 hover:text-red-500" aria-label="Delete"><Trash2 size={14} /></button>
+                </thead>
+                <tbody>
+                  {filteredTrades.length === 0 && trades.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-12">
+                        <div className="flex flex-col items-center">
+                          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mb-4">
+                            <DollarSign className="text-blue-600 dark:text-blue-400" size={32} />
+                          </div>
+                          <h3 className="text-lg font-bold text-slate-700 dark:text-white">No Trades Yet</h3>
+                          <p className="text-slate-500 dark:text-slate-400 mb-4">Start by entering your first trade above.</p>
+                          <button
+                            onClick={() => {
+                              setNewTrade({ ...initialTradeState, pair: "EURUSD", entry: "1.0500", exit: "1.0550", lots: "1.00" });
+                              setTimeout(() => {
+                                if (typeof window !== "undefined") {
+                                  window.scrollTo({ top: 0, behavior: "smooth" });
+                                }
+                              }, 100);
+                            }}
+                            className="px-4 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 transition-colors"
+                          >
+                            Fill Sample Trade
+                          </button>
                         </div>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-              <tfoot>
-                <tr className="bg-slate-50 dark:bg-white/5 font-mono">
-                  <td className="py-2 pl-2 text-xs text-slate-500 dark:text-slate-400" colSpan={5}>Filtered total</td>
-                  <td className={`py-2 font-bold ${filteredTotal >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                    {fmtUSD(filteredTotal)}
-                  </td>
-                  <td colSpan={2}></td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                  ) : filteredTrades.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-12">
+                        <div className="flex flex-col items-center">
+                          <AlertTriangle className="text-yellow-500 mb-2" size={32} />
+                          <h3 className="text-lg font-bold text-slate-700 dark:text-white">No Matching Trades</h3>
+                          <p className="text-slate-500 dark:text-slate-400">Try adjusting your filters.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTrades.map((t) => (
+                      <tr key={t.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5">
+                        <td className="py-3 pl-2 text-slate-600 dark:text-white hidden sm:table-cell">{t.date} <span className="text-xs text-slate-400">{t.time}</span></td>
+                        <td className="py-3 font-bold text-slate-800 dark:text-white">{t.pair}</td>
+                        <td className="py-3"><span className={`px-2 py-0.5 rounded text-xs ${t.direction === "Long" ? "bg-green-100 text-green-700 dark:text-green-300 dark:bg-green-900/50" : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-900/50"}`}>{t.direction}</span></td>
+                        <td className="py-3 text-slate-500 dark:text-slate-400 text-xs hidden sm:table-cell">{t.setup}</td>
+                        <td className="py-3 text-slate-600 dark:text-slate-300 font-mono">{t.lots}</td>
+                        <td className={`py-3 font-bold font-mono ${t.pnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{fmtUSD(t.pnl)}</td>
+                        <td className="py-3">
+                          <button onClick={() => setNotesModalTradeId(t.id)} className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-300 hover:underline">
+                            {t.imageUrl && <ImageIcon size={14} className="text-purple-500" />}
+                            <Edit3 size={14} /> {t.notes || t.imageUrl ? "Details" : "Add"}
+                          </button>
+                        </td>
+                        <td className="py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button onClick={() => copyTrade(t)} className="text-blue-400 hover:text-blue-600" aria-label="Copy"><ClipboardCopy size={14} /></button>
+                            <button onClick={() => deleteTrade(t.id)} className="text-slate-400 hover:text-red-500" aria-label="Delete"><Trash2 size={14} /></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-50 dark:bg-white/5 font-mono">
+                    <td className="py-2 pl-2 text-xs text-slate-500 dark:text-slate-400" colSpan={5}>Filtered total</td>
+                    <td className={`py-2 font-bold ${filteredTotal >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                      {fmtUSD(filteredTotal)}
+                    </td>
+                    <td colSpan={2}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </CollapsibleSection>
       </div>
 
@@ -3235,22 +3509,13 @@ const AQTApp: React.FC = () => {
                 <X size={24} />
               </button>
             </div>
-            <AnalyticsDashboard trades={trades} currentBalance={balance} startBalance={globalSettings.startBalance || 1000} />
+            <AnalyticsDashboard trades={accountTrades} currentBalance={balance} startBalance={activeAccount?.startingBalance || globalSettings.startBalance || 1000} />
           </div>
         </div>
       )}
 
       {/* Help Guide Modal */}
       <HelpGuide isOpen={showHelp} onClose={() => setShowHelp(false)} />
-
-      {/* Risk/Reward Calculator Modal */}
-      {showRRCalculator && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowRRCalculator(false)}>
-          <div className="max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <RiskRewardCalculator />
-          </div>
-        </div>
-      )}
 
       {/* ============= PHASE 1-5: NEW UI COMPONENTS ============= */}
 
@@ -3267,7 +3532,7 @@ const AQTApp: React.FC = () => {
                 <X size={24} />
               </button>
             </div>
-            <SmartInsights trades={trades} />
+            <SmartInsights trades={accountTrades} />
           </div>
         </div>
       )}
@@ -3587,13 +3852,157 @@ const AQTApp: React.FC = () => {
               ts: t.ts || new Date(t.date).getTime(),
               accountId: accountId
             })) as Trade[];
+
             setTrades(prev => [...prev, ...newTrades]);
+
+            // Persist imported trades to Firebase
+            if (firebaseReady && db && user && newTrades.length > 0) {
+              const saveTrades = async () => {
+                try {
+                  let batch = writeBatch(db);
+                  let count = 0;
+                  const promises = [];
+
+                  for (const trade of newTrades) {
+                    // Sanitize to remove undefined values which Firestore rejects
+                    const safeTrade = JSON.parse(JSON.stringify(trade));
+                    const ref = doc(db, 'artifacts', APP_ID, 'users', user.uid, 'trades', trade.id);
+                    batch.set(ref, safeTrade);
+                    count++;
+                    if (count >= 450) { // Commit batch every ~450 items
+                      promises.push(batch.commit());
+                      batch = writeBatch(db);
+                      count = 0;
+                    }
+                  }
+                  if (count > 0) promises.push(batch.commit());
+                  await Promise.all(promises);
+                  console.log(`Successfully saved ${newTrades.length} imported trades to cloud.`);
+                } catch (e) {
+                  console.error("Failed to save imported trades to cloud", e);
+                }
+              };
+              saveTrades();
+            }
+
             setShowImportWizard(false);
             setIsDemoMode(false);
           }}
           darkMode={darkMode}
         />
       )}
+
+      {/* Account Manager Modal */}
+      <AccountManager
+        isOpen={showAccountManager}
+        onClose={() => setShowAccountManager(false)}
+        accounts={accounts}
+        activeAccountId={activeAccountId}
+        onSelectAccount={(accountId) => {
+          setActiveAccountId(accountId);
+          setShowAccountManager(false);
+        }}
+        onUpdateAccount={(updatedAccount) => {
+          setAccounts(prev => prev.map(acc =>
+            acc.id === updatedAccount.id ? updatedAccount : acc
+          ));
+        }}
+        onDeleteAccount={(accountId) => {
+          setAccounts(prev => prev.filter(acc => acc.id !== accountId));
+          if (activeAccountId === accountId) {
+            const remaining = accounts.filter(acc => acc.id !== accountId);
+            setActiveAccountId(remaining.length > 0 ? remaining[0].id : null);
+          }
+        }}
+        balanceOperations={balanceOperations}
+        onAddBalanceOperation={(operation) => {
+          // Add operation to list
+          setBalanceOperations(prev => [...prev, operation]);
+          // Update balance based on operation
+          if (operation.type === 'deposit') {
+            setBalance(prev => round2(prev + operation.amount));
+            setBalanceInput(String(round2(balance + operation.amount)));
+          } else {
+            setBalance(prev => round2(prev - operation.amount));
+            setBalanceInput(String(round2(balance - operation.amount)));
+          }
+          // Update account's starting balance if it's the first deposit
+          if (operation.accountId) {
+            setAccounts(prev => prev.map(acc => {
+              if (acc.id === operation.accountId) {
+                const newStartingBalance = operation.type === 'deposit'
+                  ? (acc.startingBalance || 0) + operation.amount
+                  : (acc.startingBalance || 0) - operation.amount;
+                return { ...acc, startingBalance: newStartingBalance, lastUpdated: Date.now() };
+              }
+              return acc;
+            }));
+          }
+        }}
+        darkMode={darkMode}
+      />
+
+      {/* Undo Toast Notification */}
+      {showUndoToast.visible && (
+        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 animate-fade-in-up">
+          <div className="glass-card px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-200 dark:border-slate-700">
+            <div className="text-slate-700 dark:text-slate-200">
+              <span className="font-medium">{showUndoToast.tradePair}</span> trade deleted
+            </div>
+            <button
+              onClick={undoDelete}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-all hover:scale-105 active:scale-95"
+            >
+              Undo
+            </button>
+            <button
+              onClick={() => setShowUndoToast({ visible: false })}
+              className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Community Leaderboard */}
+      <CommunityLeaderboard
+        isOpen={showCommunity}
+        onClose={() => setShowCommunity(false)}
+        darkMode={darkMode}
+        userStats={{
+          winRate: riskMetrics.winRate,
+          profitFactor: riskMetrics.profitFactor,
+          totalTrades: trades.length,
+          bestStreak: streakData.bestStreak || 0,
+          averageRR: riskMetrics.expectancy || 0,
+        }}
+        userId={user?.uid}
+      />
+
+      {/* Share with AI */}
+      <ShareWithLLM
+        isOpen={showShareLLM}
+        onClose={() => setShowShareLLM(false)}
+        darkMode={darkMode}
+        trades={trades.map(t => ({
+          id: t.id,
+          pair: t.pair,
+          direction: t.direction,
+          pnl: t.pnl,
+          setup: t.setup || 'Unknown',
+          emotion: t.emotion || 'Unknown',
+          date: t.date,
+          time: t.time,
+          notes: t.notes,
+        }))}
+        stats={{
+          winRate: riskMetrics.winRate,
+          profitFactor: riskMetrics.profitFactor,
+          expectancy: riskMetrics.expectancy || 0,
+          totalPnL: trades.reduce((sum, t) => sum + t.pnl, 0),
+        }}
+      />
 
     </div>
   );

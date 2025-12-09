@@ -108,6 +108,7 @@ export interface UserSettings {
     // Phase 1 Enhancements
     settingsMode?: 'simple' | 'advanced'; // Settings UI mode
     collapsedSections?: string[]; // Array of collapsed section IDs
+    tradingStyle?: 'scalper' | 'day' | 'swing'; // Trading Style Mode
 
     // Notification preferences
     notificationsEnabled?: boolean;

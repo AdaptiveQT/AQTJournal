@@ -64,6 +64,18 @@ const SETTING_CATEGORIES: SettingCategory[] = [
         settings: [
             { id: 'startBalance', label: 'Starting Balance ($)', description: 'Your initial account size', type: 'number', min: 0, step: 100, icon: DollarSign },
             { id: 'targetBalance', label: 'Target Balance ($)', description: 'Your goal account size', type: 'number', min: 0, step: 100, icon: Target },
+            {
+                id: 'tradingStyle',
+                label: 'Trading Style',
+                description: 'Optimizes dashboard metrics',
+                type: 'select',
+                options: [
+                    { value: 'day', label: 'Day Trader (Session Focused)' },
+                    { value: 'scalper', label: 'Scalper (Speed & Costs)' },
+                    { value: 'swing', label: 'Swing Trader (Long Term)' },
+                ],
+                icon: Zap
+            },
             { id: 'maxDailyLossPercent', label: 'Max Daily Loss %', description: 'Stop trading threshold', type: 'number', min: 0.5, max: 10, step: 0.5, icon: Shield },
             { id: 'safeMode', label: 'Safe Mode', description: 'Conservative risk calculations', type: 'boolean', icon: Shield },
         ],
@@ -167,6 +179,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
                 autoBackup: true,
                 backupFrequency: 'weekly',
                 settingsMode: 'simple',
+                tradingStyle: 'day',
             };
             setLocal({ ...local, ...defaults });
         }
@@ -367,8 +380,8 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
                                         key={amount}
                                         onClick={() => setBalanceInput(amount.toString())}
                                         className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${balanceInput === amount.toString()
-                                                ? 'bg-green-500 text-white'
-                                                : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200'
+                                            ? 'bg-green-500 text-white'
+                                            : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 hover:bg-green-200'
                                             }`}
                                     >
                                         ${amount.toLocaleString()}
