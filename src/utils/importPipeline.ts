@@ -663,7 +663,7 @@ export interface MT5AccountInfo {
 
 /**
  * Extract account metadata from MT5 Trade History Report HTML
- * Parses the header section: Name, Account, Company, Date
+ * Actual format: <title>973451: Alvin Marshall - Trade History Report</title>
  */
 export function extractMT5AccountInfo(html: string): MT5AccountInfo | null {
     if (!html || !html.includes('Trade History Report')) {
@@ -677,55 +677,40 @@ export function extractMT5AccountInfo(html: string): MT5AccountInfo | null {
         currency: 'USD'
     };
 
-    // Extract Name: Look for "Name:" followed by value in <b> tag
-    // Pattern: <td>Name:</td><td><b>Alvin Marshall</b></td>
-    const nameMatch = html.match(/<td[^>]*>Name:\s*<\/td>\s*<td[^>]*><b>([^<]+)<\/b>/i);
-    if (nameMatch) {
-        info.name = nameMatch[1].trim();
+    // Parse from title tag: "<title>973451: Alvin Marshall - Trade History Report</title>"
+    const titleMatch = html.match(/<title>(\d+):\s*([^<-]+)\s*-\s*Trade History Report<\/title>/i);
+    if (titleMatch) {
+        info.accountNumber = titleMatch[1].trim();
+        info.name = titleMatch[2].trim();
     }
 
-    // Extract Account: Pattern "Account: 973451 (USD, Coinexx-Live, real, Hedge)"
-    // Look for "Account:" followed by value in <b> tag
-    const accountMatch = html.match(/<td[^>]*>Account:\s*<\/td>\s*<td[^>]*><b>([^<]+)<\/b>/i);
-    if (accountMatch) {
-        const accountStr = accountMatch[1].trim();
-        // Parse: "973451 (USD, Coinexx-Live, real, Hedge)"
-        const parts = accountStr.match(/^(\d+)\s*\(([^)]+)\)/);
-        if (parts) {
-            info.accountNumber = parts[1];
-            const details = parts[2].split(',').map(s => s.trim());
-            if (details.length >= 1) info.currency = details[0]; // USD
-            if (details.length >= 2) info.server = details[1];   // Coinexx-Live
-            if (details.length >= 3) info.accountType = details.slice(2).join(', '); // real, Hedge
-        } else {
-            // Just use the whole string as account number
-            info.accountNumber = accountStr.replace(/\D/g, '') || accountStr;
+    // Fallback: try to find account number in other places
+    if (!info.accountNumber) {
+        const accountMatch = html.match(/Account[:\s]*(\d{4,})/i);
+        if (accountMatch) {
+            info.accountNumber = accountMatch[1];
         }
     }
 
-    // Extract Company/Broker: Pattern "Company: Coinexx Limited"
-    const companyMatch = html.match(/<td[^>]*>Company:\s*<\/td>\s*<td[^>]*><b>([^<]+)<\/b>/i);
-    if (companyMatch) {
-        info.broker = companyMatch[1].trim();
+    // Extract broker from <th> or <td> containing bold text
+    // Pattern: <th ...><b>Coinexx Limited</b></th>
+    const brokerMatch = html.match(/<th[^>]*>\s*<b>([^<]+)<\/b>\s*<\/th>/i);
+    if (brokerMatch && !brokerMatch[1].includes('Trade History') && !brokerMatch[1].includes('Positions')) {
+        info.broker = brokerMatch[1].trim();
     }
 
-    // Extract Date: Pattern "Date: 2025.12.08 17:30"
-    const dateMatch = html.match(/<td[^>]*>Date:\s*<\/td>\s*<td[^>]*><b>([^<]+)<\/b>/i);
-    if (dateMatch) {
-        info.reportDate = dateMatch[1].trim();
-    }
-
-    // If we didn't find the structured format, try alternative patterns
-    if (!info.name) {
-        // Look for "Name" text followed by any bold text
-        const altNameMatch = html.match(/Name[:\s]*<[^>]*><b>([^<]+)<\/b>/i);
-        if (altNameMatch) info.name = altNameMatch[1].trim();
-    }
-
+    // Alternative broker pattern: look for company-like text
     if (!info.broker) {
-        // Look for "Company" text
-        const altCompanyMatch = html.match(/Company[:\s]*<[^>]*><b>([^<]+)<\/b>/i);
-        if (altCompanyMatch) info.broker = altCompanyMatch[1].trim();
+        const altBrokerMatch = html.match(/<b>((?:[\w\s]+(?:Limited|LLC|Inc|Corp|Ltd))[^<]*)<\/b>/i);
+        if (altBrokerMatch) {
+            info.broker = altBrokerMatch[1].trim();
+        }
+    }
+
+    // Try to extract currency from account string like "973451 (USD, ...)"
+    const currencyMatch = html.match(/\d+\s*\(([A-Z]{3})/i);
+    if (currencyMatch) {
+        info.currency = currencyMatch[1].toUpperCase();
     }
 
     // Only return if we found at least name or account number
