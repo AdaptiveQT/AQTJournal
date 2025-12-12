@@ -1,7 +1,7 @@
 // src/app/page.tsx
-import AQTApp from "@/components/AQTApp";
+import RetailBeastApp from "@/components/RetailBeastApp";
 
 export default function Page() {
-    return <AQTApp />;
+    return <RetailBeastApp />;
 }
 

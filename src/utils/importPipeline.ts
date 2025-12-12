@@ -1,5 +1,5 @@
 /**
- * Import Pipeline for AQT Journal
+ * Import Pipeline for RetailBeastFX Journal
  * Supports CSV parsing with column auto-detection and MT4/MT5 format handling
  */
 

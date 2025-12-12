@@ -108,20 +108,22 @@ const ImportWizard: React.FC<ImportWizardProps> = ({
                 setImportResult({
                     success: false,
                     trades: [],
-                    errors: [`Failed to parse file: ${error instanceof Error ? error.message : 'Unknown error'}`],
-                    warnings: []
+                    errors: [{ row: 0, column: 'file', value: '', message: `Failed to parse file: ${error instanceof Error ? error.message : 'Unknown error'}` }],
+                    warnings: [],
+                    skippedRows: 0
                 });
-                setStep('confirm');
+                setStep('validate');
             }
         };
         reader.onerror = () => {
             setImportResult({
                 success: false,
                 trades: [],
-                errors: ['Failed to read file. Please try again.'],
-                warnings: []
+                errors: [{ row: 0, column: 'file', value: '', message: 'Failed to read file. Please try again.' }],
+                warnings: [],
+                skippedRows: 0
             });
-            setStep('confirm');
+            setStep('validate');
         };
         reader.readAsText(file);
     }, []);

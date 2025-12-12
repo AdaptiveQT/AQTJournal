@@ -1,4 +1,4 @@
-// AQTApp.tsx — patched for Vercel (lucide icon prop type fix) and inline Firebase.
+// RetailBeastApp.tsx — patched for Vercel (lucide icon prop type fix) and inline Firebase.
 // - Uses permissive IconType (size?: string | number) for lucide icons
 // - No 'title' prop passed to lucide icons (avoids type error on Vercel)
 // - Firebase initialized from NEXT_PUBLIC_* env vars (works locally & on Vercel)
@@ -143,7 +143,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, type FirebaseStorage } from "firebase/storage";
-const APP_ID = "aqt-journal";
+const APP_ID = "retailbeastfx-journal";
 
 // Pull config from env; if missing, we will run in Local Mode safely.
 const firebaseConfig = {
@@ -172,11 +172,11 @@ try {
     firebaseReady = true;
   } else {
     console.warn(
-      "[AQT] Firebase config not found. Running in Local Mode. Set NEXT_PUBLIC_FIREBASE_* in .env.local to enable cloud sync."
+      "[RetailBeastFX] Firebase config not found. Running in Local Mode. Set NEXT_PUBLIC_FIREBASE_* in .env.local to enable cloud sync."
     );
   }
 } catch (e) {
-  console.warn("[AQT] Firebase init failed; running in Local Mode:", e);
+  console.warn("[RetailBeastFX] Firebase init failed; running in Local Mode:", e);
   firebaseReady = false;
 }
 
@@ -1614,7 +1614,7 @@ const FlipMode: React.FC<{
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <Zap className="text-yellow-400" size={28} />
-              AQT Flip Mode
+              Flip Mode
             </h1>
             <p className="text-sm text-slate-400">Simple. Focused. Profitable.</p>
           </div>
@@ -1850,7 +1850,7 @@ const FlipMode: React.FC<{
 };
 
 /* ---------------- Main ---------------- */
-const AQTApp: React.FC = () => {
+const RetailBeastApp: React.FC = () => {
   // State
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
@@ -1964,7 +1964,7 @@ const AQTApp: React.FC = () => {
         if (token) await signInWithCustomToken(auth, token);
         else await signInAnonymously(auth);
       } catch (e) {
-        console.warn("[AQT] Auth failed; staying in Local Mode:", e);
+        console.warn("[RetailBeastFX] Auth failed; staying in Local Mode:", e);
       }
     };
     initAuth();
@@ -2000,7 +2000,7 @@ const AQTApp: React.FC = () => {
           if (data.globalSettings !== undefined) setGlobalSettings(data.globalSettings);
         }
       } catch (e) {
-        console.warn('[AQT] Failed to load settings from localStorage:', e);
+        console.warn('[RetailBeastFX] Failed to load settings from localStorage:', e);
       }
     }
 
@@ -2044,7 +2044,7 @@ const AQTApp: React.FC = () => {
       try {
         localStorage.setItem('aqt_settings', JSON.stringify(payload));
       } catch (e) {
-        console.warn('[AQT] Failed to save settings to localStorage:', e);
+        console.warn('[RetailBeastFX] Failed to save settings to localStorage:', e);
       }
     }
 
@@ -2120,7 +2120,7 @@ const AQTApp: React.FC = () => {
         }
       }
     } catch (e) {
-      console.warn('[AQT] Failed to load accounts:', e);
+      console.warn('[RetailBeastFX] Failed to load accounts:', e);
     }
   }, []);
 
@@ -2130,7 +2130,7 @@ const AQTApp: React.FC = () => {
     try {
       localStorage.setItem('aqt_accounts', JSON.stringify(accounts));
     } catch (e) {
-      console.warn('[AQT] Failed to save accounts:', e);
+      console.warn('[RetailBeastFX] Failed to save accounts:', e);
     }
   }, [accounts]);
 
@@ -2617,7 +2617,7 @@ const AQTApp: React.FC = () => {
     setIsDemoMode(true);
     setShowDemoBanner(false);
 
-    console.log('[AQT] Demo data loaded: 100 sample trades');
+    console.log('[RetailBeastFX] Demo data loaded: 100 sample trades');
   }, []);
 
   const clearDemoData = useCallback(() => {
@@ -2627,7 +2627,7 @@ const AQTApp: React.FC = () => {
     setIsDemoMode(false);
     setShowDemoBanner(true);
 
-    console.log('[AQT] Demo data cleared');
+    console.log('[RetailBeastFX] Demo data cleared');
   }, []);
 
   // ============= PHASE 1-5: NEW HANDLERS =============
@@ -2731,7 +2731,7 @@ const AQTApp: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white transition-colors">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <h2 className="text-xl font-bold">AQT Trading Journal</h2>
+        <h2 className="text-xl font-bold">RetailBeastFX Journal</h2>
         <p className="text-slate-500">Loading your data...</p>
       </div>
     );
@@ -2825,7 +2825,7 @@ const AQTApp: React.FC = () => {
           <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
             <div>
               <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                AQT <span className="text-blue-600 dark:text-blue-400">v2.8 Pro</span>
+                RetailBeastFX <span className="text-green-500 dark:text-green-400">Pro</span>
                 <span className="ml-2 px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400 text-xs font-bold uppercase tracking-wider">Beta</span>
                 {user ? (
                   <span className="inline-flex" aria-label="Synced to Cloud">
@@ -2838,7 +2838,7 @@ const AQTApp: React.FC = () => {
                 )}
               </h1>
               <p className="text-slate-600 dark:text-blue-300 text-sm">
-                Adaptive Quantitative Trading System
+                Mechanical Execution
                 {(activeAccount?.name || user?.displayName) && (
                   <span className="hidden sm:inline"> • Welcome, <span className="font-semibold text-blue-600 dark:text-blue-400">{activeAccount?.name?.split(' ')[0] || user?.displayName?.split(' ')[0]}</span></span>
                 )}
@@ -4020,4 +4020,4 @@ const AQTApp: React.FC = () => {
   );
 };
 
-export default AQTApp;
+export default RetailBeastApp;

@@ -1,4 +1,4 @@
-// AQT Trading Journal - Service Worker for Offline Mode
+// RetailBeastFX Trading Journal - Service Worker for Offline Mode
 const CACHE_NAME = 'aqt-journal-v1';
 const STATIC_CACHE = 'aqt-static-v1';
 

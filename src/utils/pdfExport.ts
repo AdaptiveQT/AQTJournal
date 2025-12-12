@@ -10,7 +10,7 @@ interface ExportOptions {
 
 export async function exportToPDF(options: ExportOptions = {}): Promise<void> {
     const {
-        title = 'AQT Trading Report',
+        title = 'RetailBeastFX Trading Report',
         includeStats = true,
         includeJournal = true,
     } = options;
@@ -88,12 +88,12 @@ export async function exportToPDF(options: ExportOptions = {}): Promise<void> {
             pdf.setPage(i);
             pdf.setFontSize(8);
             pdf.setTextColor(148, 163, 184); // Light slate
-            pdf.text(`Page ${i} of ${pageCount} | AQT Trading Journal`, 105, 290, { align: 'center' });
+            pdf.text(`Page ${i} of ${pageCount} | RetailBeastFX Journal`, 105, 290, { align: 'center' });
         }
 
         // Save the PDF
         const dateStr = new Date().toISOString().split('T')[0];
-        pdf.save(`AQT_Trading_Report_${dateStr}.pdf`);
+        pdf.save(`RetailBeastFX_Report_${dateStr}.pdf`);
 
         // Remove loading indicator
         document.body.removeChild(loadingDiv);
@@ -107,4 +107,4 @@ export async function exportToPDF(options: ExportOptions = {}): Promise<void> {
 }
 
 // Quick export function for use in components
-export const quickExportPDF = () => exportToPDF({ title: 'AQT Trading Report' });
+export const quickExportPDF = () => exportToPDF({ title: 'RetailBeastFX Trading Report' });

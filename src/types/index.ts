@@ -1,5 +1,5 @@
 /**
- * Shared TypeScript types for AQT Journal
+ * Shared TypeScript types for RetailBeastFX Journal
  */
 
 export interface Trade {

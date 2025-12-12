@@ -1,5 +1,5 @@
 /**
- * Analytics Engine for AQT Journal
+ * Analytics Engine for RetailBeastFX Journal
  * Provides core trading analytics calculations using R-multiple methodology
  */
 

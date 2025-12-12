@@ -1,11 +1,11 @@
 {
-    "name": "AQT Trading Journal",
-    "short_name": "AQT Journal",
-    "description": "Professional forex trading journal with AI-powered insights",
+    "name": "RetailBeastFX Trading Journal",
+    "short_name": "RetailBeastFX",
+    "description": "Professional forex trading journal with mechanical execution insights",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0f172a",
-    "theme_color": "#3b82f6",
+    "theme_color": "#22c55e",
     "orientation": "portrait-primary",
     "icons": [
         {

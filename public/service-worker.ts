@@ -115,7 +115,7 @@ sw.addEventListener('push', (event: PushEvent) => {
         data: data,
     };
 
-    event.waitUntil(sw.registration.showNotification(data.title || 'AQT Journal', options));
+    event.waitUntil(sw.registration.showNotification(data.title || 'RetailBeastFX', options));
 });
 
 // Notification click

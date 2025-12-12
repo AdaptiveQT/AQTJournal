@@ -13,19 +13,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AQT Journal - Trading Journal & Analytics for Forex & Futures",
+  title: "RetailBeastFX - Trading Journal & Analytics for Forex & Futures",
   description: "Professional trading journal with setup expectancy, session heatmaps, R-multiple analytics, and MT4/MT5 import. Journal faster. Find your edge.",
   keywords: ["trading journal", "forex journal", "futures journal", "MT4", "MT5", "expectancy", "trading analytics", "trade log"],
-  authors: [{ name: "AQT Journal" }],
+  authors: [{ name: "RetailBeastFX" }],
   openGraph: {
-    title: "AQT Journal - Trading Journal & Analytics",
+    title: "RetailBeastFX - Trading Journal & Analytics",
     description: "Journal faster. Find your edge. See which setups and sessions actually pay.",
     type: "website",
-    siteName: "AQT Journal",
+    siteName: "RetailBeastFX",
   },
   twitter: {
     card: "summary_large_image",
-    title: "AQT Journal - Trading Journal & Analytics",
+    title: "RetailBeastFX - Trading Journal & Analytics",
     description: "Journal faster. Find your edge. See which setups and sessions actually pay.",
   },
   robots: {
@@ -43,7 +43,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#3b82f6" />
+        <meta name="theme-color" content="#22c55e" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
