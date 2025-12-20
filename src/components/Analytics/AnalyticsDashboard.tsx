@@ -18,8 +18,10 @@ import {
     Legend
 } from 'recharts';
 import { Trade } from '../../types';
-import { TrendingUp, BarChart2, PieChart as PieIcon, Calendar as CalendarIcon } from 'lucide-react';
+import { TrendingUp, BarChart2, PieChart as PieIcon, Calendar as CalendarIcon, Grid3X3 } from 'lucide-react';
 import CalendarView from './CalendarView';
+import SessionSetupMatrix from './SessionSetupMatrix';
+import TrinityPerformanceMatrix from './TrinityPerformanceMatrix';
 
 interface AnalyticsDashboardProps {
     trades: Trade[];
@@ -36,7 +38,7 @@ const COLORS = {
 };
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ trades, currentBalance, startBalance }) => {
-    const [activeTab, setActiveTab] = useState<'charts' | 'calendar'>('charts');
+    const [activeTab, setActiveTab] = useState<'charts' | 'calendar' | 'matrix'>('charts');
 
     // --- Equity Curve Data ---
     const equityData = useMemo(() => {
@@ -120,10 +122,21 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ trades, current
                 >
                     <CalendarIcon size={16} /> Calendar
                 </button>
+                <button
+                    onClick={() => setActiveTab('matrix')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-all ${activeTab === 'matrix' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                >
+                    <Grid3X3 size={16} /> Trinity Matrix
+                </button>
             </div>
 
             {activeTab === 'calendar' ? (
                 <CalendarView trades={trades} />
+            ) : activeTab === 'matrix' ? (
+                <div className="space-y-6">
+                    <TrinityPerformanceMatrix trades={trades} darkMode={true} />
+                    <SessionSetupMatrix trades={trades} darkMode={true} />
+                </div>
             ) : (
                 <>
                     {/* 1. Equity Curve */}

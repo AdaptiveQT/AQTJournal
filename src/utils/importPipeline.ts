@@ -59,6 +59,7 @@ const COLUMN_PATTERNS: Record<keyof Trade, RegExp[]> = {
     voiceNoteUrl: [/^voice$/i, /^audio$/i],
     mood: [/^mood$/i],
     accountId: [], // Not auto-mapped from imports, set programmatically
+    entryType: [/^entry.?type$/i, /^entry.?style$/i], // Entry style categorization
 };
 
 /**

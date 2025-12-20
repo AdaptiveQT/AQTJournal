@@ -29,6 +29,7 @@ export interface Trade {
     sessionType?: 'London' | 'NewYork' | 'Tokyo' | 'Sydney' | 'Asian' | 'Overlap';
     strategyId?: string; // ID of strategy used
     imageUrl?: string; // Trade screenshot
+    entryType?: 'Breakout' | 'Pullback' | 'Reversal' | 'Fade'; // Entry style categorization
 }
 
 /**
