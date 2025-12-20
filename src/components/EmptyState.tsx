@@ -11,6 +11,7 @@ import {
     BarChart2,
     Lightbulb
 } from 'lucide-react';
+import { MascotImage } from './Mascot/MascotImage';
 
 interface EmptyStateProps {
     type: 'trades' | 'dashboard' | 'setups' | 'analytics';
@@ -30,10 +31,11 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     const configs = {
         trades: {
             icon: FileSpreadsheet,
-            iconColor: 'text-blue-500',
-            bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+            iconColor: 'text-beast-green',
+            bgColor: 'bg-beast-green/10',
             headline: 'No trades yet',
             body: 'Import from MT4/MT5 (CSV/HTML) or add one manually. Or load demo data to explore.',
+            showMascot: true,
             actions: [
                 { label: 'Import CSV', icon: Upload, onClick: onImportCSV, primary: false },
                 { label: 'Load Demo Data', icon: Database, onClick: onLoadDemo, primary: true },
@@ -46,6 +48,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
             bgColor: 'bg-purple-50 dark:bg-purple-900/20',
             headline: 'Insights appear after 20+ trades',
             body: 'Load demo data to preview analytics, or start logging your trades.',
+            showMascot: true,
             actions: [
                 { label: 'Load Demo Data', icon: Database, onClick: onLoadDemo, primary: true },
                 { label: 'Add First Trade', icon: Plus, onClick: onAddTrade, primary: false }
@@ -53,10 +56,11 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         },
         setups: {
             icon: Target,
-            iconColor: 'text-green-500',
-            bgColor: 'bg-green-50 dark:bg-green-900/20',
+            iconColor: 'text-beast-green',
+            bgColor: 'bg-beast-green/10',
             headline: 'Setups drive insights',
             body: 'Create 2-4 tags you actually use: Breakout, Pullback, Reversal, Trend.',
+            showMascot: false,
             actions: [
                 { label: 'Create Setup', icon: Plus, onClick: onCreateSetup, primary: true }
             ]
@@ -67,6 +71,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
             bgColor: 'bg-amber-50 dark:bg-amber-900/20',
             headline: 'Analytics unlock at 20+ trades',
             body: 'See which setups and sessions actually pay. Load demo data to preview.',
+            showMascot: true,
             actions: [
                 { label: 'Load Demo Data', icon: Database, onClick: onLoadDemo, primary: true }
             ]
@@ -77,9 +82,15 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     const Icon = config.icon;
 
     return (
-        <div className={`${config.bgColor} rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 p-8 text-center`}>
-            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${config.bgColor} mb-4`}>
-                <Icon size={32} className={config.iconColor} />
+        <div className={`${config.bgColor} rounded-xl border-2 border-dashed border-beast-green/30 p-8 text-center`}>
+            {/* Mascot + Icon combo */}
+            <div className="flex items-center justify-center gap-4 mb-4">
+                {config.showMascot && (
+                    <MascotImage size="lg" animate={true} />
+                )}
+                <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${config.bgColor}`}>
+                    <Icon size={32} className={config.iconColor} />
+                </div>
             </div>
 
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">

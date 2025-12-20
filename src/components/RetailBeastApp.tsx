@@ -90,6 +90,7 @@ import NotificationManager, { Notification as AppNotification, createNotificatio
 import SmartInsights from "./Analytics/SmartInsights";
 import ExpectancyChart from "./Analytics/ExpectancyChart";
 import SessionHeatmap from "./Analytics/SessionHeatmap";
+import SessionSetupMatrix from "./Analytics/SessionSetupMatrix";
 import RMultipleECDF from "./Analytics/RMultipleECDF";
 import StrategyLibrary from "./Strategies/StrategyLibrary";
 import GoalTracker from "./Goals/GoalTracker";
@@ -103,6 +104,8 @@ import OnboardingChecklist from "./Onboarding/OnboardingChecklist";
 import FlipModeSettings from "./FlipMode/FlipModeSettings";
 import AccountManager from "./Account/AccountManager";
 import VirtualizedTradeTable from "./VirtualizedTradeTable";
+import { MascotPeek } from "./Mascot/MascotPeek";
+import ScreenshotUpload from "./ScreenshotUpload";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -203,6 +206,15 @@ const TRADE_SETUPS = [
   "Range", "Scalp", "News", "Other"
 ] as const;
 
+// Entry type categorization for analytics
+const ENTRY_TYPES = [
+  "Breakout",    // Breaking through key level
+  "Pullback",    // Retracement to support/resistance
+  "Reversal",    // Against trend at exhaustion
+  "Fade",        // Counter-trend mean reversion
+] as const;
+type EntryType = typeof ENTRY_TYPES[number];
+
 // Trade templates for quick trade entry
 const TRADE_TEMPLATES: { name: string; pair: string; setup: string }[] = [
   { name: "EUR/USD Breakout", pair: "EURUSD", setup: "Breakout" },
@@ -220,6 +232,8 @@ type TradeInput = {
   setup: string; // Can be preset or custom
   emotion: string;
   notes: string;
+  imageUrl: string; // Screenshot base64 data URL
+  entryType: EntryType; // Entry style categorization
 };
 type Trade = {
   id: string;
@@ -236,6 +250,7 @@ type Trade = {
   emotion: string;
   notes: string;
   imageUrl?: string;
+  entryType?: EntryType;
 };
 type GlobalSettings = {
   pipValue: number;
@@ -467,6 +482,8 @@ const normalizeTrade = (trade: TradeInput, lotSize: number): Omit<Trade, "pnl"> 
     setup: trade.setup,
     emotion: trade.emotion,
     notes: trade.notes,
+    imageUrl: trade.imageUrl || undefined,
+    entryType: trade.entryType,
   };
 };
 
@@ -749,6 +766,61 @@ const SetupPerformanceAnalysis = React.memo<{ trades: Trade[] }>(({ trades }) =>
     </div>
   );
 });
+
+
+// Entry Type Performance Analysis Component
+const EntryTypePerformance = React.memo<{ trades: Trade[] }>(({ trades }) => {
+  const entryTypeGroups = trades.reduce((acc, trade) => {
+    const type = trade.entryType || "Unspecified";
+    if (!acc[type]) acc[type] = { count: 0, wins: 0, pnl: 0 };
+    acc[type].count++;
+    acc[type].pnl += trade.pnl;
+    if (trade.pnl > 0) acc[type].wins++;
+    return acc;
+  }, {} as Record<string, { count: number; wins: number; pnl: number }>);
+
+  const data = Object.entries(entryTypeGroups)
+    .map(([name, stats]) => ({
+      name,
+      winRate: stats.count > 0 ? (stats.wins / stats.count) * 100 : 0,
+      avgPnl: stats.count > 0 ? stats.pnl / stats.count : 0,
+      ...stats
+    }))
+    .sort((a, b) => b.pnl - a.pnl);
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'Breakout': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border-blue-200 dark:border-blue-800';
+      case 'Pullback': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border-purple-200 dark:border-purple-800';
+      case 'Reversal': return 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 border-orange-200 dark:border-orange-800';
+      case 'Fade': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800';
+      default: return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700';
+    }
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10">
+      <h4 className="font-bold mb-3 flex items-center gap-2 text-slate-800 dark:text-white">
+        <Target size={16} /> Entry Type Performance
+      </h4>
+      <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+        {data.length === 0 ? <div className="text-sm text-slate-500 text-center py-4">No data</div> : data.map(item => (
+          <div key={item.name} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-white/5 rounded border border-slate-100 dark:border-white/5">
+            <div>
+              <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold border ${getTypeColor(item.name)}`}>{item.name}</span>
+              <div className="text-[10px] text-slate-500 mt-1">{item.count} trades • {item.wins}W / {item.count - item.wins}L</div>
+            </div>
+            <div className="text-right">
+              <div className={`text-sm font-bold ${item.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>${item.pnl.toFixed(0)}</div>
+              <div className="text-[10px] text-slate-500">{item.winRate.toFixed(0)}% WR</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+});
+
 
 const PairPerformanceSummary: React.FC<{ trades: Trade[] }> = ({ trades }) => {
   const pairStats = trades.reduce((acc, trade) => {
@@ -1897,7 +1969,7 @@ const RetailBeastApp: React.FC = () => {
   const [notesModalTradeId, setNotesModalTradeId] = useState<string | null>(null);
   const notesTrade = useMemo(() => trades.find((t) => t.id === notesModalTradeId) ?? null, [trades, notesModalTradeId]);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const initialTradeState: TradeInput = useMemo(() => ({ pair: "", direction: "Long", entry: "", exit: "", lots: "", setup: "Breakout", emotion: "Calm", notes: "" }), []);
+  const initialTradeState: TradeInput = useMemo(() => ({ pair: "", direction: "Long", entry: "", exit: "", lots: "", setup: "Breakout", emotion: "Calm", notes: "", imageUrl: "", entryType: "Breakout" }), []);
   const [newTrade, setNewTrade] = useState<TradeInput>(initialTradeState);
 
   // ============= PHASE 1-5: NEW STATE VARIABLES =============
@@ -2477,6 +2549,8 @@ const RetailBeastApp: React.FC = () => {
       setup: trade.setup || "Breakout",
       emotion: trade.emotion || "Calm",
       notes: "",
+      imageUrl: "",
+      entryType: trade.entryType || "Breakout",
     });
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -3254,9 +3328,10 @@ const RetailBeastApp: React.FC = () => {
         {/* DEEP ANALYTICS */}
         {trades.length > 0 && (
           <CollapsibleSection title="Deep Analytics" icon={BarChart2}>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <EnhancedTradeHeatmap trades={trades} />
               <SetupPerformanceAnalysis trades={trades} />
+              <EntryTypePerformance trades={trades} />
               <PairPerformanceSummary trades={trades} />
             </div>
           </CollapsibleSection>
@@ -3306,13 +3381,14 @@ const RetailBeastApp: React.FC = () => {
 
         {/* ENTRY */}
         <CollapsibleSection title="Trade Entry" icon={DollarSign} defaultOpen={true}>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
             <div className="col-span-2 md:col-span-1"><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Pair</label><input type="text" placeholder="EURUSD" value={newTrade.pair} list={listId} onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })} onKeyDown={(e) => e.key === "Enter" && entryRef.current?.focus()} className="w-full pl-8 pr-4 py-3 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg" /><datalist id={listId}>{COMMON_PAIRS.map((p) => <option key={p} value={p} />)}</datalist></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Dir</label><select value={newTrade.direction} onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as Direction })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white"><option value="Long">Long</option><option value="Short">Short</option></select></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Entry</label><input ref={entryRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.entry} onChange={(e) => setNewTrade({ ...newTrade, entry: e.target.value })} onKeyDown={(e) => e.key === "Enter" && exitRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Exit</label><input ref={exitRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.exit} onChange={(e) => setNewTrade({ ...newTrade, exit: e.target.value })} onKeyDown={(e) => e.key === "Enter" && lotsRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Lots</label><input ref={lotsRef} type="number" placeholder={`Rec: ${lotSize}`} step={brokerMinLot} value={newTrade.lots} onChange={(e) => setNewTrade({ ...newTrade, lots: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTrade()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Setup</label><select value={newTrade.setup} onChange={(e) => setNewTrade({ ...newTrade, setup: e.target.value })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white">{TRADE_SETUPS.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+            <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Entry Type</label><select value={newTrade.entryType} onChange={(e) => setNewTrade({ ...newTrade, entryType: e.target.value as EntryType })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white">{ENTRY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
           </div>
           <div className="mt-4 p-3 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 flex justify-between items-center" aria-live="polite">
             <div className="text-xs text-slate-500">Live Preview (with {effectiveLots} lots):</div>
@@ -3325,6 +3401,17 @@ const RetailBeastApp: React.FC = () => {
             </div>
           )}
           {validationErrors.length > 0 && (<ul className="mt-3 text-sm text-red-600 list-disc list-inside">{validationErrors.map((e, i) => <li key={i}>{e}</li>)}</ul>)}
+
+          {/* Screenshot Upload */}
+          <div className="mt-4">
+            <label className="text-xs text-blue-700 dark:text-blue-200 block mb-2 font-bold uppercase tracking-wider">Screenshot (optional)</label>
+            <ScreenshotUpload
+              imageUrl={newTrade.imageUrl}
+              onChange={(url) => setNewTrade({ ...newTrade, imageUrl: url })}
+              className=""
+            />
+          </div>
+
           <div className="mt-4 flex gap-3"><button type="button" onClick={addTrade} disabled={!isFormValid} className={`flex-1 font-bold py-3 rounded-lg text-lg shadow-xl ${isFormValid ? "bg-blue-600 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"}`}>{isFormValid ? "Log Trade" : "Enter Details"}</button><button type="button" onClick={() => setNewTrade(initialTradeState)} className="px-4 py-3 rounded-lg bg-slate-200 dark:bg-slate-800">Reset</button></div>
         </CollapsibleSection>
 
@@ -3333,6 +3420,7 @@ const RetailBeastApp: React.FC = () => {
           <CollapsibleSection title="Setup & Session Analytics" icon={BarChart2} defaultOpen={false}>
             <div className="space-y-6">
               <ExpectancyChart trades={trades} darkMode={darkMode} />
+              <SessionSetupMatrix trades={trades} darkMode={darkMode} />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SessionHeatmap trades={trades} darkMode={darkMode} />
                 <RMultipleECDF trades={trades} darkMode={darkMode} />
@@ -3409,6 +3497,9 @@ const RetailBeastApp: React.FC = () => {
                     <th scope="col" className="pb-3 hidden sm:table-cell cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('setup')}>
                       <div className="flex items-center gap-1">Setup {sortConfig?.key === 'setup' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                     </th>
+                    <th scope="col" className="pb-3 hidden md:table-cell cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('entryType')}>
+                      <div className="flex items-center gap-1">Entry {sortConfig?.key === 'entryType' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                    </th>
                     <th scope="col" className="pb-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('lots')}>
                       <div className="flex items-center gap-1">Lots {sortConfig?.key === 'lots' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                     </th>
@@ -3462,6 +3553,15 @@ const RetailBeastApp: React.FC = () => {
                         <td className="py-3 font-bold text-slate-800 dark:text-white">{t.pair}</td>
                         <td className="py-3"><span className={`px-2 py-0.5 rounded text-xs ${t.direction === "Long" ? "bg-green-100 text-green-700 dark:text-green-300 dark:bg-green-900/50" : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-900/50"}`}>{t.direction}</span></td>
                         <td className="py-3 text-slate-500 dark:text-slate-400 text-xs hidden sm:table-cell">{t.setup}</td>
+                        <td className="py-3 text-xs hidden md:table-cell">
+                          {t.entryType && (
+                            <span className={`px-2 py-0.5 rounded ${t.entryType === 'Breakout' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' :
+                              t.entryType === 'Pullback' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' :
+                                t.entryType === 'Reversal' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300' :
+                                  'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300'
+                              }`}>{t.entryType}</span>
+                          )}
+                        </td>
                         <td className="py-3 text-slate-600 dark:text-slate-300 font-mono">{t.lots}</td>
                         <td className={`py-3 font-bold font-mono ${t.pnl >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>{fmtUSD(t.pnl)}</td>
                         <td className="py-3">
@@ -3482,7 +3582,7 @@ const RetailBeastApp: React.FC = () => {
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-50 dark:bg-white/5 font-mono">
-                    <td className="py-2 pl-2 text-xs text-slate-500 dark:text-slate-400" colSpan={5}>Filtered total</td>
+                    <td className="py-2 pl-2 text-xs text-slate-500 dark:text-slate-400" colSpan={6}>Filtered total</td>
                     <td className={`py-2 font-bold ${filteredTotal >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                       {fmtUSD(filteredTotal)}
                     </td>
@@ -4014,6 +4114,14 @@ const RetailBeastApp: React.FC = () => {
           expectancy: riskMetrics.expectancy || 0,
           totalPnL: trades.reduce((sum, t) => sum + t.pnl, 0),
         }}
+      />
+
+      {/* Corner mascot peek */}
+      <MascotPeek
+        delay={5000}
+        position="bottom-right"
+        message="Let's get those gains! 🐺💰"
+        enabled={true}
       />
 
     </div>

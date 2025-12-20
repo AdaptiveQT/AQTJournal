@@ -56,6 +56,7 @@ import {
   User as UserIcon,
   Calendar,
 } from "lucide-react";
+import { MascotPeek } from "./Mascot/MascotPeek";
 import {
   LineChart,
   Line,
@@ -4014,6 +4015,14 @@ const AQTApp: React.FC = () => {
           expectancy: riskMetrics.expectancy || 0,
           totalPnL: trades.reduce((sum, t) => sum + t.pnl, 0),
         }}
+      />
+
+      {/* Corner mascot peek */}
+      <MascotPeek
+        delay={5000}
+        position="bottom-right"
+        message="Let's get those gains! 🐺💰"
+        enabled={true}
       />
 
     </div>

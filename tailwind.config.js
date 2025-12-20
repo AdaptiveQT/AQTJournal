@@ -4,6 +4,20 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Override default blue with green for RetailBeastFX theme
+        'blue': {
+          50: '#E8FFF3',
+          100: '#B9FFD8',
+          200: '#69FFAE',
+          300: '#00FF88',
+          400: '#00E676',
+          500: '#00C853',
+          600: '#00A844',
+          700: '#008836',
+          800: '#006828',
+          900: '#00481A',
+          950: '#002A0F',
+        },
         // Cyberpunk base
         'beast-black': {
           DEFAULT: '#000000',
