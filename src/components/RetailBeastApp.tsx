@@ -3415,19 +3415,6 @@ const RetailBeastApp: React.FC = () => {
           <div className="mt-4 flex gap-3"><button type="button" onClick={addTrade} disabled={!isFormValid} className={`flex-1 font-bold py-3 rounded-lg text-lg shadow-xl ${isFormValid ? "bg-blue-600 text-white" : "bg-slate-300 dark:bg-slate-700 text-slate-500"}`}>{isFormValid ? "Log Trade" : "Enter Details"}</button><button type="button" onClick={() => setNewTrade(initialTradeState)} className="px-4 py-3 rounded-lg bg-slate-200 dark:bg-slate-800">Reset</button></div>
         </CollapsibleSection>
 
-        {/* SETUP & SESSION ANALYTICS */}
-        {trades.length >= 5 && (
-          <CollapsibleSection title="Setup & Session Analytics" icon={BarChart2} defaultOpen={false}>
-            <div className="space-y-6">
-              <ExpectancyChart trades={trades} darkMode={darkMode} />
-              <SessionSetupMatrix trades={trades} darkMode={darkMode} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <SessionHeatmap trades={trades} darkMode={darkMode} />
-                <RMultipleECDF trades={trades} darkMode={darkMode} />
-              </div>
-            </div>
-          </CollapsibleSection>
-        )}
 
         {/* CHARTS */}
         {trades.length > 0 && (
