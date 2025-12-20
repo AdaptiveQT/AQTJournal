@@ -1214,12 +1214,12 @@ const SettingsDrawer: React.FC<{ isOpen: boolean; onClose: () => void; settings:
     onClose();
   };
 
-  const settingLabels: Record<string, { label: string; icon: React.ElementType; description: string }> = {
+  const settingLabels = {
     pipValue: { label: 'Pip Value ($)', icon: DollarSign, description: 'Value per pip per lot' },
     stopLoss: { label: 'Stop Loss (pips)', icon: Shield, description: 'Max loss per trade' },
     profitTarget: { label: 'Profit Target (pips)', icon: Target, description: 'Expected take profit' },
     dailyGrowth: { label: 'Daily Growth (%)', icon: TrendingUp, description: 'Target daily % gain' },
-  };
+  } as const;
 
   return (
     <>
