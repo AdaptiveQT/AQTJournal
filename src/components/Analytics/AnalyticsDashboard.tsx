@@ -18,10 +18,11 @@ import {
     Legend
 } from 'recharts';
 import { Trade } from '../../types';
-import { TrendingUp, BarChart2, PieChart as PieIcon, Calendar as CalendarIcon, Grid3X3 } from 'lucide-react';
+import { TrendingUp, BarChart2, PieChart as PieIcon, Calendar as CalendarIcon, Grid3X3, Zap, Target, AlertTriangle } from 'lucide-react';
 import CalendarView from './CalendarView';
 import SessionSetupMatrix from './SessionSetupMatrix';
 import TrinityPerformanceMatrix from './TrinityPerformanceMatrix';
+import { useBeastMatrix } from '../../hooks/useBeastMatrix';
 
 interface AnalyticsDashboardProps {
     trades: Trade[];
@@ -39,6 +40,9 @@ const COLORS = {
 
 const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ trades, currentBalance, startBalance }) => {
     const [activeTab, setActiveTab] = useState<'charts' | 'calendar' | 'matrix'>('charts');
+
+    // 🔥 THE BEAST BRAIN 🔥
+    const { beastScore, sessionStats, trinityTrades, impulseTrades, avgRMultiple, streakBonus } = useBeastMatrix(trades);
 
     // --- Equity Curve Data ---
     const equityData = useMemo(() => {
@@ -181,6 +185,61 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ trades, current
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
+                    </div>
+
+                    {/* Beast Score Card */}
+                    <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl p-6 border border-emerald-500/30 shadow-lg shadow-emerald-500/10">
+                        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-white">
+                            <Zap className="text-emerald-400" />
+                            Beast Score
+                        </h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="text-center p-4 bg-slate-700/50 rounded-lg">
+                                <div className="text-3xl font-bold text-emerald-400">{beastScore}</div>
+                                <div className="text-xs text-slate-400 uppercase tracking-wider">XP</div>
+                            </div>
+                            <div className="text-center p-4 bg-slate-700/50 rounded-lg">
+                                <div className="text-2xl font-bold text-emerald-400 flex items-center justify-center gap-1">
+                                    <Target size={18} />
+                                    {trinityTrades}
+                                </div>
+                                <div className="text-xs text-slate-400 uppercase tracking-wider">Trinity Trades</div>
+                            </div>
+                            <div className="text-center p-4 bg-slate-700/50 rounded-lg">
+                                <div className="text-2xl font-bold text-red-400 flex items-center justify-center gap-1">
+                                    <AlertTriangle size={18} />
+                                    {impulseTrades}
+                                </div>
+                                <div className="text-xs text-slate-400 uppercase tracking-wider">Impulse Trades</div>
+                            </div>
+                            <div className="text-center p-4 bg-slate-700/50 rounded-lg">
+                                <div className="text-2xl font-bold text-blue-400">{avgRMultiple}R</div>
+                                <div className="text-xs text-slate-400 uppercase tracking-wider">Avg R-Multiple</div>
+                            </div>
+                        </div>
+                        {streakBonus > 0 && (
+                            <div className="mt-4 text-center text-sm text-emerald-400">
+                                🔥 Streak Bonus: +{streakBonus} XP
+                            </div>
+                        )}
+                        {sessionStats.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-slate-700">
+                                <div className="text-xs text-slate-400 uppercase tracking-wider mb-2">Session Win Rates</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {sessionStats.map(stat => (
+                                        <span
+                                            key={stat.session}
+                                            className={`px-3 py-1 rounded-full text-xs font-medium ${stat.winRate >= 60 ? 'bg-emerald-500/20 text-emerald-400' :
+                                                    stat.winRate >= 40 ? 'bg-yellow-500/20 text-yellow-400' :
+                                                        'bg-red-500/20 text-red-400'
+                                                }`}
+                                        >
+                                            {stat.session}: {stat.winRate}%
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
