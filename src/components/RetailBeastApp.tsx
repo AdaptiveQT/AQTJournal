@@ -106,6 +106,7 @@ import AccountManager from "./Account/AccountManager";
 import VirtualizedTradeTable from "./VirtualizedTradeTable";
 import { MascotPeek } from "./Mascot/MascotPeek";
 import ScreenshotUpload from "./ScreenshotUpload";
+import RulesModal from "./RulesModal";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -3839,6 +3840,9 @@ const RetailBeastApp: React.FC = () => {
 
       {/* PWA Install Prompt */}
       <InstallPrompt />
+
+      {/* XP Rules Onboarding Modal (first visit only) */}
+      <RulesModal />
 
       {/* Demo Mode Indicator */}
       {isDemoMode && (
