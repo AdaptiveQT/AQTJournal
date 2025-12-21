@@ -306,6 +306,14 @@ export function convertToTrades(
         const date = parseDate(getValue('date')) || new Date().toISOString().split('T')[0];
         const time = getValue('time') || '09:00';
 
+        // Skip zero PnL trades where entry === exit (these are likely pending/cancelled orders or balance ops)
+        // Real breakeven trades typically have slight difference between entry/exit due to spread
+        if (pnl === 0 && (exit === null || exit === entry)) {
+            skippedRows++;
+            warnings.push(`Row ${rowIndex + 2}: Skipped $0 trade with no exit price (likely pending/cancelled order)`);
+            return;
+        }
+
         const trade: Trade = {
             id: getValue('id') || `import-${Date.now()}-${rowIndex}`,
             pair: pairValue.toUpperCase().replace(/[^A-Z0-9]/g, ''),
@@ -355,13 +363,13 @@ export function parseMT4HTML(htmlContent: string): { headers: string[]; rows: Pa
     const content = htmlContent;
 
     // Look for the Positions table (best for closed trades with P&L)
-    let positionsData = extractMT5Table(content, 'Positions');
+    const positionsData = extractMT5Table(content, 'Positions');
     if (positionsData.rows.length > 0) {
         return normalizeMT5Headers(positionsData);
     }
 
     // Fallback to Deals table
-    let dealsData = extractMT5Table(content, 'Deals');
+    const dealsData = extractMT5Table(content, 'Deals');
     if (dealsData.rows.length > 0) {
         return normalizeMT5Headers(dealsData);
     }
