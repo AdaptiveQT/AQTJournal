@@ -147,8 +147,13 @@ export interface DeletedTrade extends Trade {
     deletedAt: number;
 }
 
-description: string;
-action: () => void;
+export interface KeyboardShortcut {
+    key: string;
+    ctrl?: boolean;
+    shift?: boolean;
+    alt?: boolean;
+    description: string;
+    action: () => void;
 }
 
 // Violation Taxonomy - for non-Trinity trades
