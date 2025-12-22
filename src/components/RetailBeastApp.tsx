@@ -1438,10 +1438,11 @@ const FlipMode: React.FC<{
   balance: number;
   trades: Trade[];
   settings: GlobalSettings;
+  onboardingDate?: string; // ISO date string from OnboardingProfile
   onAddTrade: (trade: Omit<Trade, 'id' | 'ts' | 'time' | 'date' | 'lots' | 'setup' | 'emotion' | 'notes'>) => void;
   onSwitchMode: () => void;
   onOpenSettings: () => void;
-}> = ({ balance, trades, settings, onAddTrade, onSwitchMode, onOpenSettings }) => {
+}> = ({ balance, trades, settings, onboardingDate, onAddTrade, onSwitchMode, onOpenSettings }) => {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
   const [showRulesCheck, setShowRulesCheck] = useState(true);
@@ -1486,7 +1487,13 @@ const FlipMode: React.FC<{
   const wins = todayTrades.filter(t => t.pnl > 0).length;
   const losses = todayTrades.filter(t => t.pnl < 0).length;
   const allRulesChecked = rules.every(r => r.checked);
-  const maxTradesPerDay = settings.maxTradesPerDay || 3;
+
+  // Enforce 3 trades/day for first 7 days (non-negotiable)
+  const daysSinceOnboarding = onboardingDate
+    ? Math.floor((Date.now() - new Date(onboardingDate).getTime()) / (1000 * 60 * 60 * 24))
+    : 999; // If no onboarding date, assume old user
+  const isInOnboardingPeriod = daysSinceOnboarding < 7;
+  const maxTradesPerDay = isInOnboardingPeriod ? 3 : (settings.maxTradesPerDay || 3);
 
   useEffect(() => {
     if (todayPnl >= dailyGoalAmount && dailyGoalAmount > 0 && !showGoalModal) {
@@ -2979,6 +2986,7 @@ const RetailBeastApp: React.FC = () => {
           balance={balance}
           trades={trades}
           settings={globalSettings}
+          onboardingDate={userProfile?.onboardingDate}
           onAddTrade={handleAddTradeForFlipMode}
           onSwitchMode={() => setIsFlipMode(false)}
           onOpenSettings={() => setShowFlipModeSettings(true)}
