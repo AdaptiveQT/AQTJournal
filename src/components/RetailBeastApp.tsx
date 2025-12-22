@@ -129,6 +129,7 @@ import { MT5AccountInfo } from "../utils/importPipeline";
 
 // Components
 import WeeklyReviewModal from "./Onboarding/WeeklyReviewModal";
+import XPAnimation from "./Gamification/XPAnimation";
 
 /* ---------------- Firebase (inlined) ---------------- */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
@@ -245,6 +246,7 @@ type TradeInput = {
   notes: string;
   imageUrl: string; // Screenshot base64 data URL
   entryType: EntryType; // Entry style categorization
+  sessionType?: 'London' | 'NewYork' | 'Tokyo' | 'Sydney' | 'Asian' | 'Overlap';
 };
 
 
@@ -267,6 +269,7 @@ type Trade = {
   // Violation Taxonomy fields
   setupQuality?: SetupQuality;
   violationReason?: ViolationReason;
+  sessionType?: 'London' | 'NewYork' | 'Tokyo' | 'Sydney' | 'Asian' | 'Overlap';
 };
 type GlobalSettings = {
   pipValue: number;
@@ -500,6 +503,7 @@ const normalizeTrade = (trade: TradeInput, lotSize: number): Omit<Trade, "pnl"> 
     notes: trade.notes,
     imageUrl: trade.imageUrl || undefined,
     entryType: trade.entryType,
+    sessionType: trade.sessionType as any,
   };
 };
 
@@ -1601,7 +1605,8 @@ const FlipMode: React.FC<{
       direction: newTrade.direction,
       entry,
       exit,
-      pnl: Math.round(pnl * 100) / 100
+      pnl: Math.round(pnl * 100) / 100,
+      sessionType: isSessionLocked ? (lockedSession.replace(' ', '') as any) : undefined
     });
 
     setNewTrade({ pair: '', direction: 'Long', entry: '', exit: '' });
@@ -1741,10 +1746,14 @@ const FlipMode: React.FC<{
               <SettingsIcon size={20} />
             </button>
             <button
-              onClick={onSwitchMode}
-              className="px-4 py-2 bg-slate-800 rounded-lg text-sm hover:bg-slate-700 flex items-center gap-2"
+              onClick={trades.length >= 25 ? onSwitchMode : undefined}
+              className={`px-4 py-2 rounded-lg text-sm flex items-center gap-2 transition-all ${trades.length >= 25
+                ? 'bg-slate-800 hover:bg-slate-700 text-white'
+                : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                }`}
+              title={trades.length >= 25 ? "Switch to Pro Mode" : `Unlock Pro Mode at 25 trades (${trades.length}/25)`}
             >
-              <Eye size={16} />
+              {trades.length >= 25 ? <Eye size={16} /> : <Lock size={16} />}
               Pro Mode
             </button>
           </div>
@@ -2117,6 +2126,24 @@ const RetailBeastApp: React.FC = () => {
     }
     return null;
   });
+
+  // Session Lock Logic (Main App)
+  const daysSinceOnboarding = userProfile?.onboardingDate
+    ? Math.floor((Date.now() - new Date(userProfile.onboardingDate).getTime()) / (1000 * 60 * 60 * 24))
+    : 999;
+  const isSessionLocked = daysSinceOnboarding < 7 && !!userProfile?.primarySession;
+  const lockedSession = userProfile?.primarySession || 'New York';
+
+  // Force Session Type if Locked
+  useEffect(() => {
+    if (isSessionLocked) {
+      const normalized = lockedSession === 'New York' ? 'NewYork' : lockedSession;
+      if (newTrade.sessionType !== normalized) {
+        setNewTrade(prev => ({ ...prev, sessionType: normalized as any }));
+      }
+    }
+  }, [isSessionLocked, lockedSession, newTrade.sessionType]);
+
   const onboardingComplete = protocolAccepted && userProfile !== null;
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -2131,6 +2158,9 @@ const RetailBeastApp: React.FC = () => {
     }
     return [];
   });
+
+  // XP Reward State
+  const [xpReward, setXpReward] = useState<{ amount: number; message: string } | null>(null);
 
   // Check for Weekly Review Requirement
   useEffect(() => {
@@ -2175,7 +2205,11 @@ const RetailBeastApp: React.FC = () => {
     localStorage.setItem('rbfx_weekly_reviews', JSON.stringify(updatedReviews));
     setShowWeeklyReviewModal(false);
 
-    // Optional: Could add XP reward here
+    // Sync to Firebase
+    if (firebaseReady && db && user) {
+      setDoc(doc(db, 'artifacts', APP_ID, 'users', user.uid, 'data', 'weeklyReviews'), { reviews: updatedReviews }, { merge: true })
+        .catch(e => console.error("Failed to sync weekly reviews", e));
+    }
   };
   const [hasViewedAnalytics, setHasViewedAnalytics] = useState(false);
   const [showFlipModeSettings, setShowFlipModeSettings] = useState(false);
@@ -2269,6 +2303,39 @@ const RetailBeastApp: React.FC = () => {
       setIsLoading(false);
     });
     return () => unsubscribe();
+  }, [user]);
+
+  // Sync UserProfile & WeeklyReviews from Firebase (Read)
+  useEffect(() => {
+    if (!firebaseReady || !db || !user) return;
+
+    // UserProfile
+    const profileRef = doc(db, "artifacts", APP_ID, "users", user.uid, "data", "userProfile");
+    const unsubProfile = onSnapshot(profileRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data() as UserProfile;
+        setUserProfile(data);
+        // Only set balance if not already set (avoid overwriting current balance if divergent)
+        // Actually, balance is synced via 'settings' usually, but onboarding sets initial.
+        // We'll trust 'settings' (balance) over 'userProfile' definition for ongoing balance.
+      }
+    });
+
+    // WeeklyReviews
+    const reviewsRef = doc(db, "artifacts", APP_ID, "users", user.uid, "data", "weeklyReviews");
+    const unsubReviews = onSnapshot(reviewsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data?.reviews) {
+          setWeeklyReviews(data.reviews);
+        }
+      }
+    });
+
+    return () => {
+      unsubProfile();
+      unsubReviews();
+    };
   }, [user]);
 
   // Sync Settings to Firebase (Write - Debounced) + localStorage fallback
@@ -2691,6 +2758,11 @@ const RetailBeastApp: React.FC = () => {
     setBalance(prev => round2(prev + pnlValue));
     setBalanceInput(String(round2(balance + pnlValue)));
 
+    // XP Reward for First Trade
+    if (trades.length === 0) {
+      setXpReward({ amount: 500, message: "First Blood! Welcome to the Arena." });
+    }
+
     // Persist to Firestore if available
     if (firebaseReady && db && user) {
       try {
@@ -3034,6 +3106,7 @@ const RetailBeastApp: React.FC = () => {
 
   // Handle Flip Mode
   const handleAddTradeForFlipMode = (tradeInput: Omit<Trade, 'id' | 'ts' | 'time' | 'date' | 'lots' | 'setup' | 'emotion' | 'notes'>) => {
+    // Note: limit check is done inside FlipMode component before calling this
     const ts = Date.now();
     const trade: Trade = {
       ...tradeInput,
@@ -3050,6 +3123,11 @@ const RetailBeastApp: React.FC = () => {
     setTrades(prev => [trade, ...prev]);
     setBalance(prev => Math.round((prev + trade.pnl) * 100) / 100);
     setBalanceInput(String(Math.round((balance + trade.pnl) * 100) / 100));
+
+    // XP Reward
+    if (trades.length === 0) {
+      setXpReward({ amount: 500, message: "First Blood! Welcome to the Arena." });
+    }
 
     // Persist to Firestore if available
     if (firebaseReady && db && user) {
@@ -3079,9 +3157,14 @@ const RetailBeastApp: React.FC = () => {
         onComplete={(profile) => {
           localStorage.setItem('rbfx_user_profile', JSON.stringify(profile));
           setUserProfile(profile);
-          // Also set the starting balance from profile
           setBalance(profile.startingBalance);
           setBalanceInput(profile.startingBalance.toString());
+
+          // Sync to Firebase
+          if (firebaseReady && db && user) {
+            setDoc(doc(db, 'artifacts', APP_ID, 'users', user.uid, 'data', 'userProfile'), profile, { merge: true })
+              .catch(e => console.error("Failed to sync profile", e));
+          }
         }}
       />
     );
@@ -3663,7 +3746,7 @@ const RetailBeastApp: React.FC = () => {
 
         {/* ENTRY */}
         <CollapsibleSection title="Trade Entry" icon={DollarSign} defaultOpen={true}>
-          <div className="grid grid-cols-2 md:grid-cols-7 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="col-span-2 md:col-span-1"><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Pair</label><input type="text" placeholder="EURUSD" value={newTrade.pair} list={listId} onChange={(e) => setNewTrade({ ...newTrade, pair: e.target.value.toUpperCase() })} onKeyDown={(e) => e.key === "Enter" && entryRef.current?.focus()} className="w-full pl-8 pr-4 py-3 bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-white/10 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-lg" /><datalist id={listId}>{COMMON_PAIRS.map((p) => <option key={p} value={p} />)}</datalist></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Dir</label><select value={newTrade.direction} onChange={(e) => setNewTrade({ ...newTrade, direction: e.target.value as Direction })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white"><option value="Long">Long</option><option value="Short">Short</option></select></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Entry</label><input ref={entryRef} type="number" placeholder={pairMeta.placeholder} step={pairMeta.step} value={newTrade.entry} onChange={(e) => setNewTrade({ ...newTrade, entry: e.target.value })} onKeyDown={(e) => e.key === "Enter" && exitRef.current?.focus()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
@@ -3671,6 +3754,28 @@ const RetailBeastApp: React.FC = () => {
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Lots</label><input ref={lotsRef} type="number" placeholder={`Rec: ${lotSize}`} step={brokerMinLot} value={newTrade.lots} onChange={(e) => setNewTrade({ ...newTrade, lots: e.target.value })} onKeyDown={(e) => e.key === "Enter" && addTrade()} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 dark:text-white" /></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Setup</label><select value={newTrade.setup} onChange={(e) => setNewTrade({ ...newTrade, setup: e.target.value })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white">{TRADE_SETUPS.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
             <div><label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Entry Type</label><select value={newTrade.entryType} onChange={(e) => setNewTrade({ ...newTrade, entryType: e.target.value as EntryType })} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white">{ENTRY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
+
+            {/* Session Field (Auto-Locked) */}
+            <div>
+              <label className="text-xs text-blue-700 dark:text-blue-200 block mb-1">Session</label>
+              {isSessionLocked ? (
+                <div title={`Locked to ${lockedSession} for first 7 days`} className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-gray-400 opacity-80 cursor-not-allowed flex items-center justify-between">
+                  <span>{lockedSession}</span>
+                  <Lock size={14} className="text-emerald-500" />
+                </div>
+              ) : (
+                <select
+                  value={newTrade.sessionType || ''}
+                  onChange={(e) => setNewTrade({ ...newTrade, sessionType: e.target.value as any })}
+                  className="w-full bg-slate-100 dark:bg-black/20 border border-slate-300 dark:border-white/10 rounded px-3 py-3 text-sm dark:text-white"
+                >
+                  <option value="">(Auto)</option>
+                  {['London', 'NewYork', 'Asian', 'Sydney', 'Tokyo', 'Overlap'].map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
           <div className="mt-4 p-3 bg-slate-50 dark:bg-white/5 rounded-lg border border-slate-200 dark:border-white/10 flex justify-between items-center" aria-live="polite">
             <div className="text-xs text-slate-500">Live Preview (with {effectiveLots} lots):</div>
@@ -4151,6 +4256,15 @@ const RetailBeastApp: React.FC = () => {
         onComplete={handleWeeklyReviewComplete}
         reviewDate={new Date()}
       />
+
+      {/* XP Reward Animation */}
+      {xpReward && (
+        <XPAnimation
+          amount={xpReward.amount}
+          message={xpReward.message}
+          onComplete={() => setXpReward(null)}
+        />
+      )}
 
       {/* Welcome Modal (FTUX) */}
       <WelcomeModal
