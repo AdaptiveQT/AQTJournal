@@ -1439,10 +1439,11 @@ const FlipMode: React.FC<{
   trades: Trade[];
   settings: GlobalSettings;
   onboardingDate?: string; // ISO date string from OnboardingProfile
+  primarySession?: string; // Locked session for first 7 days
   onAddTrade: (trade: Omit<Trade, 'id' | 'ts' | 'time' | 'date' | 'lots' | 'setup' | 'emotion' | 'notes'>) => void;
   onSwitchMode: () => void;
   onOpenSettings: () => void;
-}> = ({ balance, trades, settings, onboardingDate, onAddTrade, onSwitchMode, onOpenSettings }) => {
+}> = ({ balance, trades, settings, onboardingDate, primarySession, onAddTrade, onSwitchMode, onOpenSettings }) => {
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showLossModal, setShowLossModal] = useState(false);
   const [showRulesCheck, setShowRulesCheck] = useState(true);
@@ -1494,6 +1495,10 @@ const FlipMode: React.FC<{
     : 999; // If no onboarding date, assume old user
   const isInOnboardingPeriod = daysSinceOnboarding < 7;
   const maxTradesPerDay = isInOnboardingPeriod ? 3 : (settings.maxTradesPerDay || 3);
+
+  // Session lock: force primary session for first 7 days
+  const isSessionLocked = isInOnboardingPeriod && !!primarySession;
+  const lockedSession = primarySession || 'New York';
 
   useEffect(() => {
     if (todayPnl >= dailyGoalAmount && dailyGoalAmount > 0 && !showGoalModal) {
@@ -1827,6 +1832,19 @@ const FlipMode: React.FC<{
             <p className="text-xs text-slate-400 mt-1">{wins}W / {losses}L</p>
           </div>
         </div>
+
+        {/* Session Lock Indicator */}
+        {isSessionLocked && (
+          <div className="bg-emerald-900/30 border border-emerald-500/50 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Lock className="text-emerald-400" size={20} />
+              <div>
+                <p className="font-medium text-emerald-400">Session Locked: {lockedSession}</p>
+                <p className="text-xs text-slate-400">FlipMode: Session locked for your first 7 days. (Day {daysSinceOnboarding + 1}/7)</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Trade Entry */}
         {!showGoalModal && !showLossModal && todayTrades.length < maxTradesPerDay && (
@@ -2987,6 +3005,7 @@ const RetailBeastApp: React.FC = () => {
           trades={trades}
           settings={globalSettings}
           onboardingDate={userProfile?.onboardingDate}
+          primarySession={userProfile?.primarySession}
           onAddTrade={handleAddTradeForFlipMode}
           onSwitchMode={() => setIsFlipMode(false)}
           onOpenSettings={() => setShowFlipModeSettings(true)}
