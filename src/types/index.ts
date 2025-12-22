@@ -147,11 +147,28 @@ export interface DeletedTrade extends Trade {
     deletedAt: number;
 }
 
-export interface KeyboardShortcut {
-    key: string;
-    ctrl?: boolean;
-    shift?: boolean;
-    alt?: boolean;
-    description: string;
-    action: () => void;
+description: string;
+action: () => void;
+}
+
+// Violation Taxonomy - for non-Trinity trades
+export const VIOLATION_REASONS = [
+    'No Fresh OB',
+    'No BB Touch',
+    'EMA Mismatch',
+    'Outside Killzone',
+    'No Stop Loss',
+    'Revenge / FOMO'
+] as const;
+export type ViolationReason = typeof VIOLATION_REASONS[number];
+export type SetupQuality = 'TRINITY' | 'STANDARD' | 'IMPULSE';
+
+// Weekly Review Gate
+export interface WeeklyReview {
+    id: string;
+    weekEndingDate: string; // ISO date of the Sunday (or review date)
+    bestSession: string;
+    worstViolation: string; // Can be one of VIOLATION_REASONS or custom
+    fixForNextWeek: string;
+    timestamp: number;
 }

@@ -124,8 +124,11 @@ import { registerServiceWorker, setupInstallPrompt } from "../utils/pwa";
 // Types
 import { Tag } from "../types/tags";
 import { Strategy } from "../types/strategies";
-import { TradingAccount, BalanceOperation } from "../types";
+import { TradingAccount, BalanceOperation, VIOLATION_REASONS, ViolationReason, SetupQuality, WeeklyReview } from "../types";
 import { MT5AccountInfo } from "../utils/importPipeline";
+
+// Components
+import WeeklyReviewModal from "./Onboarding/WeeklyReviewModal";
 
 /* ---------------- Firebase (inlined) ---------------- */
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
@@ -244,7 +247,7 @@ type TradeInput = {
   entryType: EntryType; // Entry style categorization
 };
 // Violation Taxonomy - for non-Trinity trades
-const VIOLATION_REASONS = [
+export const VIOLATION_REASONS = [
   'No Fresh OB',
   'No BB Touch',
   'EMA Mismatch',
@@ -252,8 +255,8 @@ const VIOLATION_REASONS = [
   'No Stop Loss',
   'Revenge / FOMO'
 ] as const;
-type ViolationReason = typeof VIOLATION_REASONS[number];
-type SetupQuality = 'TRINITY' | 'STANDARD' | 'IMPULSE';
+export type ViolationReason = typeof VIOLATION_REASONS[number];
+export type SetupQuality = 'TRINITY' | 'STANDARD' | 'IMPULSE';
 
 type Trade = {
   id: string;
@@ -2128,6 +2131,62 @@ const RetailBeastApp: React.FC = () => {
 
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(true);
+
+  // Weekly Review State
+  const [showWeeklyReviewModal, setShowWeeklyReviewModal] = useState(false);
+  const [weeklyReviews, setWeeklyReviews] = useState<WeeklyReview[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('rbfx_weekly_reviews');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  // Check for Weekly Review Requirement
+  useEffect(() => {
+    if (trades.length < 10) return; // Feature locked until 10 trades
+
+    const lastReview = weeklyReviews.length > 0
+      ? weeklyReviews.sort((a, b) => b.timestamp - a.timestamp)[0]
+      : null;
+
+    const now = new Date();
+    const currentWeekNum = getISOWeek(now);
+    const lastReviewWeekNum = lastReview ? getISOWeek(new Date(lastReview.timestamp)) : 0;
+
+    // If trade count >= 10 AND (never reviewed OR last review was previous week)
+    // AND it's Monday or later (assumed by week diff)
+    const needsReview = !lastReview || currentWeekNum !== lastReviewWeekNum;
+
+    if (needsReview) {
+      setShowWeeklyReviewModal(true);
+    }
+  }, [trades.length, weeklyReviews]);
+
+  // Helper for ISO Week
+  function getISOWeek(d: Date) {
+    const date = new Date(d.getTime());
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7);
+    const week1 = new Date(date.getFullYear(), 0, 4);
+    return 1 + Math.round(((date.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+  }
+
+  const handleWeeklyReviewComplete = (reviewData: Omit<WeeklyReview, 'id' | 'timestamp' | 'weekEndingDate'>) => {
+    const newReview: WeeklyReview = {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      weekEndingDate: new Date().toISOString(),
+      ...reviewData
+    };
+
+    const updatedReviews = [...weeklyReviews, newReview];
+    setWeeklyReviews(updatedReviews);
+    localStorage.setItem('rbfx_weekly_reviews', JSON.stringify(updatedReviews));
+    setShowWeeklyReviewModal(false);
+
+    // Optional: Could add XP reward here
+  };
   const [hasViewedAnalytics, setHasViewedAnalytics] = useState(false);
   const [showFlipModeSettings, setShowFlipModeSettings] = useState(false);
 
@@ -4094,6 +4153,13 @@ const RetailBeastApp: React.FC = () => {
           setIsDemoMode(false);
         }}
         darkMode={darkMode}
+      />
+
+      {/* Weekly Review Modal (Gate) */}
+      <WeeklyReviewModal
+        isOpen={showWeeklyReviewModal}
+        onComplete={handleWeeklyReviewComplete}
+        reviewDate={new Date()}
       />
 
       {/* Welcome Modal (FTUX) */}
