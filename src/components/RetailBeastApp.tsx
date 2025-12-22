@@ -110,6 +110,9 @@ import RulesModal from "./RulesModal";
 import FreedomTracker from "./FreedomTracker";
 import DailyDirective from "./DailyDirective";
 import TrinityChecklist from "./TrinityChecklist";
+import OnboardingProfile, { UserProfile } from "./Onboarding/OnboardingProfile";
+import ProtocolModal from "./Onboarding/ProtocolModal";
+import AnalyticsLock from "./AnalyticsLock";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -1897,8 +1900,8 @@ const FlipMode: React.FC<{
               }}
               disabled={!allTrinityChecked}
               className={`w-full py-3 rounded-lg font-bold transition-colors ${allTrinityChecked
-                  ? 'bg-green-600 hover:bg-green-500'
-                  : 'bg-slate-600 cursor-not-allowed'
+                ? 'bg-green-600 hover:bg-green-500'
+                : 'bg-slate-600 cursor-not-allowed'
                 }`}
             >
               {allTrinityChecked ? 'Log Trade' : 'Complete Trinity Checklist'}
@@ -2032,7 +2035,22 @@ const RetailBeastApp: React.FC = () => {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [balanceOperations, setBalanceOperations] = useState<BalanceOperation[]>([]);
 
-  // Onboarding State
+  // Onboarding State (Protocol Modal → OnboardingProfile → Journal)
+  const [protocolAccepted, setProtocolAccepted] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('rbfx_protocol_accepted') === 'true';
+    }
+    return false;
+  });
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('rbfx_user_profile');
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+  const onboardingComplete = protocolAccepted && userProfile !== null;
+
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showOnboardingChecklist, setShowOnboardingChecklist] = useState(true);
   const [hasViewedAnalytics, setHasViewedAnalytics] = useState(false);
@@ -2917,7 +2935,41 @@ const RetailBeastApp: React.FC = () => {
     }
   };
 
-  if (isFlipMode) {
+  // ============= ONBOARDING CHAIN (linear, unskippable) =============
+  // Gate 1: Protocol Modal (must accept before anything)
+  if (!protocolAccepted) {
+    return (
+      <ProtocolModal
+        onAccept={() => {
+          localStorage.setItem('rbfx_protocol_accepted', 'true');
+          setProtocolAccepted(true);
+        }}
+      />
+    );
+  }
+
+  // Gate 2: OnboardingProfile (must complete identity lock)
+  if (!userProfile) {
+    return (
+      <OnboardingProfile
+        onComplete={(profile) => {
+          localStorage.setItem('rbfx_user_profile', JSON.stringify(profile));
+          setUserProfile(profile);
+          // Also set the starting balance from profile
+          setBalance(profile.startingBalance);
+          setBalanceInput(profile.startingBalance.toString());
+        }}
+      />
+    );
+  }
+
+  // Gate 3: Force FlipMode for first 7 days
+  const daysSinceOnboarding = userProfile
+    ? Math.floor((Date.now() - new Date(userProfile.onboardingDate).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  const shouldForceFlipMode = daysSinceOnboarding < 7;
+
+  if (isFlipMode || shouldForceFlipMode) {
     return (
       <>
         <FlipMode
@@ -3182,9 +3234,9 @@ const RetailBeastApp: React.FC = () => {
         {/* DAILY DIRECTIVE - Today's Trading Objective */}
         <div className="print:hidden">
           <DailyDirective
-            maxTrades={3}
+            maxTrades={userProfile?.maxDailyTrades || 3}
             tradesLogged={trades.filter(t => localDayKey(new Date(t.ts)) === localDayKey(new Date())).length}
-            preferredSession="New York"
+            preferredSession={userProfile?.primarySession || "New York"}
             allowedSetups={['Trinity OB', 'BB Reversal']}
             isRecoveryMode={isInRecoveryMode}
           />
