@@ -107,6 +107,7 @@ import VirtualizedTradeTable from "./VirtualizedTradeTable";
 import { MascotPeek } from "./Mascot/MascotPeek";
 import ScreenshotUpload from "./ScreenshotUpload";
 import RulesModal from "./RulesModal";
+import FreedomTracker from "./FreedomTracker";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -3149,6 +3150,25 @@ const RetailBeastApp: React.FC = () => {
 
         {/* ALERTS */}
         <WithdrawalAlert balance={balance} />
+
+        {/* FREEDOM TRACKER - Financial Independence Dashboard */}
+        {trades.length > 0 && (
+          <div className="print:hidden">
+            <FreedomTracker
+              currentBalance={balance}
+              monthlyAvgReturn={(() => {
+                // Calculate average monthly return from trades
+                const now = new Date();
+                const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+                const monthTrades = trades.filter(t => new Date(t.ts) >= oneMonthAgo);
+                const monthPnL = monthTrades.reduce((sum, t) => sum + t.pnl, 0);
+                const startingBalance = balance - monthPnL;
+                const monthlyReturn = startingBalance > 0 ? (monthPnL / startingBalance) * 100 : 5;
+                return Math.max(monthlyReturn, 1); // Minimum 1% for projections
+              })()}
+            />
+          </div>
+        )}
 
         {/* RECOVERY MODE BANNER */}
         {isInRecoveryMode && (
