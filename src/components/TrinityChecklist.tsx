@@ -37,10 +37,10 @@ export default function TrinityChecklist({ checks, onCheckChange, required = tru
 
     return (
         <div className={`rounded-lg border p-4 transition-all ${allChecked
-                ? 'bg-emerald-900/20 border-emerald-500/50'
-                : noneChecked && required
-                    ? 'bg-red-900/20 border-red-500/50'
-                    : 'bg-slate-800/50 border-slate-700'
+            ? 'bg-emerald-900/20 border-emerald-500/50'
+            : noneChecked && required
+                ? 'bg-red-900/20 border-red-500/50'
+                : 'bg-slate-800/50 border-slate-700'
             }`}>
 
             <div className="flex items-center justify-between mb-3">
@@ -61,19 +61,14 @@ export default function TrinityChecklist({ checks, onCheckChange, required = tru
 
             <div className="space-y-2">
                 {checkItems.map(item => (
-                    <label
+                    <div
                         key={item.key}
-                        className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-all ${checks[item.key]
-                                ? 'bg-emerald-500/10 hover:bg-emerald-500/20'
-                                : 'bg-white/5 hover:bg-white/10'
+                        onClick={() => onCheckChange(item.key, !checks[item.key])}
+                        className={`flex items-center gap-3 p-2 rounded cursor-pointer transition-all select-none ${checks[item.key]
+                            ? 'bg-emerald-500/10 hover:bg-emerald-500/20'
+                            : 'bg-white/5 hover:bg-white/10'
                             }`}
                     >
-                        <input
-                            type="checkbox"
-                            checked={checks[item.key]}
-                            onChange={(e) => onCheckChange(item.key, e.target.checked)}
-                            className="sr-only"
-                        />
                         <div className={`w-5 h-5 flex items-center justify-center rounded transition-all ${checks[item.key] ? 'text-emerald-400' : 'text-slate-500'
                             }`}>
                             {checks[item.key] ? <CheckCircle2 size={20} /> : <Circle size={20} />}
@@ -86,7 +81,7 @@ export default function TrinityChecklist({ checks, onCheckChange, required = tru
                                 {item.description}
                             </div>
                         </div>
-                    </label>
+                    </div>
                 ))}
             </div>
 
