@@ -109,6 +109,7 @@ import ScreenshotUpload from "./ScreenshotUpload";
 import RulesModal from "./RulesModal";
 import FreedomTracker from "./FreedomTracker";
 import DailyDirective from "./DailyDirective";
+import TrinityChecklist from "./TrinityChecklist";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -1448,6 +1449,15 @@ const FlipMode: React.FC<{
     exit: ''
   });
 
+  // Trinity Checklist - required before submission
+  const [trinityChecks, setTrinityChecks] = useState({
+    obConfirmed: false,
+    bbTouchVerified: false,
+    emaBiasAligned: false
+  });
+
+  const allTrinityChecked = trinityChecks.obConfirmed && trinityChecks.bbTouchVerified && trinityChecks.emaBiasAligned;
+
   const [rules, setRules] = useState<TradingRule[]>([
     { id: '1', text: 'I am well-rested (7+ hours sleep)', checked: false },
     { id: '2', text: 'I have reviewed my plan for today', checked: false },
@@ -1870,11 +1880,28 @@ const FlipMode: React.FC<{
               </div>
             </div>
 
+            {/* Trinity Checklist - Required before submission */}
+            <div className="mb-4">
+              <TrinityChecklist
+                checks={trinityChecks}
+                onCheckChange={(key, value) => setTrinityChecks(prev => ({ ...prev, [key]: value }))}
+                required={true}
+              />
+            </div>
+
             <button
-              onClick={handleAddTrade}
-              className="w-full py-3 bg-green-600 hover:bg-green-500 rounded-lg font-bold transition-colors"
+              onClick={() => {
+                handleAddTrade();
+                // Reset trinity checks after submission
+                setTrinityChecks({ obConfirmed: false, bbTouchVerified: false, emaBiasAligned: false });
+              }}
+              disabled={!allTrinityChecked}
+              className={`w-full py-3 rounded-lg font-bold transition-colors ${allTrinityChecked
+                  ? 'bg-green-600 hover:bg-green-500'
+                  : 'bg-slate-600 cursor-not-allowed'
+                }`}
             >
-              Log Trade
+              {allTrinityChecked ? 'Log Trade' : 'Complete Trinity Checklist'}
             </button>
           </div>
         )}
