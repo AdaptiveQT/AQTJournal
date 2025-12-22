@@ -246,17 +246,7 @@ type TradeInput = {
   imageUrl: string; // Screenshot base64 data URL
   entryType: EntryType; // Entry style categorization
 };
-// Violation Taxonomy - for non-Trinity trades
-export const VIOLATION_REASONS = [
-  'No Fresh OB',
-  'No BB Touch',
-  'EMA Mismatch',
-  'Outside Killzone',
-  'No Stop Loss',
-  'Revenge / FOMO'
-] as const;
-export type ViolationReason = typeof VIOLATION_REASONS[number];
-export type SetupQuality = 'TRINITY' | 'STANDARD' | 'IMPULSE';
+
 
 type Trade = {
   id: string;
