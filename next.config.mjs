@@ -3,6 +3,12 @@
 const nextConfig = {
     reactStrictMode: true,
 
+    // Static export for Firebase Hosting
+    output: 'export',
+
+    // Disable image optimization for static export
+    images: { unoptimized: true },
+
     // This addresses the "turbopack.root should be absolute" warning
     // and plays fine on Vercel as well.
     turbopack: {
@@ -11,9 +17,6 @@ const nextConfig = {
 
     // Optional: disable ESLint during CI builds if you hit lint errors on Vercel
     // eslint: { ignoreDuringBuilds: true },
-
-    // Optional: if you get image optimization issues on Vercel without a loader
-    // images: { unoptimized: true },
 };
 
 export default nextConfig;
