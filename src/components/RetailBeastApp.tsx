@@ -79,6 +79,7 @@ import { quickExportPDF } from "../utils/pdfExport";
 import ServiceWorkerRegistrar from "./ServiceWorkerRegistrar";
 import CommunityLeaderboard from "./CommunityLeaderboard";
 import ShareWithLLM from "./AIInsights";
+import LoginModal from "./LoginModal";
 
 // Phase 1-5: New Component Imports
 import SettingsManager from "./Settings/SettingsManager";
@@ -143,6 +144,7 @@ import {
   type Auth,
   GoogleAuthProvider,
   TwitterAuthProvider,
+  FacebookAuthProvider,
   signInWithPopup,
   signInWithRedirect,
   linkWithPopup,
@@ -2230,6 +2232,9 @@ const RetailBeastApp: React.FC = () => {
   // Auth providers
   const googleProvider = useMemo(() => new GoogleAuthProvider(), []);
   const twitterProvider = useMemo(() => new TwitterAuthProvider(), []);
+  const facebookProvider = useMemo(() => new FacebookAuthProvider(), []);
+
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // --- Auth & Data Effects (only if Firebase is ready) ---
   useEffect(() => {
@@ -2693,6 +2698,30 @@ const RetailBeastApp: React.FC = () => {
         }
       }
     }
+  };
+
+  const signInWithFacebook = async () => {
+    if (!auth) {
+      if (typeof window !== "undefined") alert("Firebase not ready.");
+      return;
+    }
+    try {
+      await signInWithPopup(auth, facebookProvider);
+      setShowLoginModal(false);
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      if (error?.code === "auth/account-exists-with-different-credential") {
+        alert("An account already exists with the same email address but different sign-in credentials. Sign in using a provider associated with this email address.");
+      } else {
+        alert(`Facebook sign-in failed: ${error?.code || error?.message || err}`);
+      }
+    }
+  };
+
+  const handleLoginRaw = (provider: 'google' | 'twitter' | 'facebook') => {
+    if (provider === 'google') signInWithGoogle().then(() => setShowLoginModal(false));
+    if (provider === 'twitter') signInWithTwitter().then(() => setShowLoginModal(false));
+    if (provider === 'facebook') signInWithFacebook();
   };
 
   const signInWithTwitter = async () => {
@@ -3262,23 +3291,13 @@ const RetailBeastApp: React.FC = () => {
             {/* Sign-in buttons */}
             <div className="flex items-center gap-2">
               {!user && (
-                <>
-                  <button
-                    onClick={signInWithGoogle}
-                    className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 dark:bg-white/10 border dark:border-white/20 dark:hover:bg-white/20 text-white text-sm transition-colors"
-                    aria-label="Sign in with Google"
-                  >
-                    Sign in with Google
-                  </button>
-                  <button
-                    onClick={signInWithTwitter}
-                    className="px-3 py-1.5 rounded bg-slate-700 hover:bg-slate-600 dark:bg-slate-800 text-white dark:hover:bg-slate-700 flex items-center gap-2 text-sm border border-slate-600 dark:border-white/10 transition-colors"
-                    aria-label="Sign in with X (Twitter)"
-                  >
-                    <Twitter size={16} />
-                    Sign in with X
-                  </button>
-                </>
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium shadow-lg hover:shadow-blue-500/25 transition-all flex items-center gap-2"
+                >
+                  <UserIcon size={18} />
+                  Sign In
+                </button>
               )}
               {user && (
                 <div className="flex items-center gap-2">
@@ -4526,6 +4545,12 @@ const RetailBeastApp: React.FC = () => {
         enabled={true}
       />
 
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLoginRaw={handleLoginRaw}
+      />
     </div>
   );
 };
