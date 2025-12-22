@@ -135,6 +135,7 @@ import {
   TwitterAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  linkWithPopup,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -2392,7 +2393,21 @@ const RetailBeastApp: React.FC = () => {
     });
   };
 
-  // --- Auth actions (Google + Twitter + Sign out) ---
+  // --- Auth actions (Google + Twitter + Anonymous + Sign out) ---
+
+  // Continue as guest (anonymous auth)
+  const continueAsGuest = async () => {
+    if (!auth) {
+      console.warn("Firebase not ready");
+      return;
+    }
+    try {
+      await signInAnonymously(auth);
+    } catch (err: unknown) {
+      console.error("Anonymous sign-in failed:", err);
+    }
+  };
+
   const signInWithGoogle = async () => {
     if (!auth) {
       if (typeof window !== "undefined") {
@@ -2401,20 +2416,37 @@ const RetailBeastApp: React.FC = () => {
       return;
     }
     try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (err: any) {
-      if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
+      // If user is anonymous, link the account to preserve data
+      if (user?.isAnonymous) {
+        await linkWithPopup(user, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      // If linking fails because account exists, sign in normally
+      if (error?.code === "auth/credential-already-in-use") {
+        try {
+          await signInWithPopup(auth, googleProvider);
+        } catch (signInErr: unknown) {
+          const signInError = signInErr as { code?: string; message?: string };
+          if (typeof window !== "undefined") {
+            alert(`Google sign-in failed: ${signInError?.code || signInError?.message || signInErr}`);
+          }
+        }
+      } else if (error?.code === "auth/popup-blocked" || error?.code === "auth/popup-closed-by-user") {
         try {
           await signInWithRedirect(auth, googleProvider);
-        } catch (redirectErr: any) {
+        } catch (redirectErr: unknown) {
+          const redirectError = redirectErr as { code?: string; message?: string };
           if (typeof window !== "undefined") {
-            alert(`Google sign-in failed: ${redirectErr?.code || redirectErr?.message || redirectErr}`);
+            alert(`Google sign-in failed: ${redirectError?.code || redirectError?.message || redirectErr}`);
           }
           console.error("Redirect sign-in error:", redirectErr);
         }
       } else {
         if (typeof window !== "undefined") {
-          alert(`Google sign-in failed: ${err?.code || err?.message || err}`);
+          alert(`Google sign-in failed: ${error?.code || error?.message || err}`);
         }
       }
     }
@@ -2428,20 +2460,37 @@ const RetailBeastApp: React.FC = () => {
       return;
     }
     try {
-      await signInWithPopup(auth, twitterProvider);
-    } catch (err: any) {
-      if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
+      // If user is anonymous, link the account to preserve data
+      if (user?.isAnonymous) {
+        await linkWithPopup(user, twitterProvider);
+      } else {
+        await signInWithPopup(auth, twitterProvider);
+      }
+    } catch (err: unknown) {
+      const error = err as { code?: string; message?: string };
+      // If linking fails because account exists, sign in normally
+      if (error?.code === "auth/credential-already-in-use") {
+        try {
+          await signInWithPopup(auth, twitterProvider);
+        } catch (signInErr: unknown) {
+          const signInError = signInErr as { code?: string; message?: string };
+          if (typeof window !== "undefined") {
+            alert(`Twitter sign-in failed: ${signInError?.code || signInError?.message || signInErr}`);
+          }
+        }
+      } else if (error?.code === "auth/popup-blocked" || error?.code === "auth/popup-closed-by-user") {
         try {
           await signInWithRedirect(auth, twitterProvider);
-        } catch (redirectErr: any) {
+        } catch (redirectErr: unknown) {
+          const redirectError = redirectErr as { code?: string; message?: string };
           if (typeof window !== "undefined") {
-            alert(`Twitter sign-in failed: ${redirectErr?.code || redirectErr?.message || redirectErr}`);
+            alert(`Twitter sign-in failed: ${redirectError?.code || redirectError?.message || redirectErr}`);
           }
           console.error("Redirect sign-in error:", redirectErr);
         }
       } else {
         if (typeof window !== "undefined") {
-          alert(`Twitter sign-in failed: ${err?.code || err?.message || err}`);
+          alert(`Twitter sign-in failed: ${error?.code || error?.message || err}`);
         }
       }
     }
