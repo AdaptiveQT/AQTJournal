@@ -3155,7 +3155,7 @@ const RetailBeastApp: React.FC = () => {
         {/* DAILY DIRECTIVE - Today's Trading Objective */}
         <div className="print:hidden">
           <DailyDirective
-            maxTrades={globalSettings.maxDailyTrades || 3}
+            maxTrades={3}
             tradesLogged={trades.filter(t => localDayKey(new Date(t.ts)) === localDayKey(new Date())).length}
             preferredSession="New York"
             allowedSetups={['Trinity OB', 'BB Reversal']}
