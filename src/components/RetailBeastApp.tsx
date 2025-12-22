@@ -108,6 +108,7 @@ import { MascotPeek } from "./Mascot/MascotPeek";
 import ScreenshotUpload from "./ScreenshotUpload";
 import RulesModal from "./RulesModal";
 import FreedomTracker from "./FreedomTracker";
+import DailyDirective from "./DailyDirective";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -3150,6 +3151,17 @@ const RetailBeastApp: React.FC = () => {
 
         {/* ALERTS */}
         <WithdrawalAlert balance={balance} />
+
+        {/* DAILY DIRECTIVE - Today's Trading Objective */}
+        <div className="print:hidden">
+          <DailyDirective
+            maxTrades={globalSettings.maxDailyTrades || 3}
+            tradesLogged={trades.filter(t => localDayKey(new Date(t.ts)) === localDayKey(new Date())).length}
+            preferredSession="New York"
+            allowedSetups={['Trinity OB', 'BB Reversal']}
+            isRecoveryMode={isInRecoveryMode}
+          />
+        </div>
 
         {/* FREEDOM TRACKER - Financial Independence Dashboard */}
         {trades.length > 0 && (
