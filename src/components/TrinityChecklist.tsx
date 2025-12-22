@@ -10,10 +10,11 @@ interface TrinityChecklistProps {
         emaBiasAligned: boolean;
     };
     onCheckChange: (key: keyof TrinityChecklistProps['checks'], value: boolean) => void;
+    onSkip?: () => void;
     required?: boolean;
 }
 
-export default function TrinityChecklist({ checks, onCheckChange, required = true }: TrinityChecklistProps) {
+export default function TrinityChecklist({ checks, onCheckChange, onSkip, required = true }: TrinityChecklistProps) {
     const allChecked = checks.obConfirmed && checks.bbTouchVerified && checks.emaBiasAligned;
     const noneChecked = !checks.obConfirmed && !checks.bbTouchVerified && !checks.emaBiasAligned;
 
@@ -100,10 +101,9 @@ export default function TrinityChecklist({ checks, onCheckChange, required = tru
                 <div className="mt-3 pt-3 border-t border-slate-700/50 text-center">
                     <button
                         type="button"
-                        onClick={() => {
-                            // Could add logic to mark as non-Trinity trade
-                        }}
-                        className="text-xs text-slate-500 hover:text-slate-300 underline"
+                        onClick={onSkip}
+                        disabled={!onSkip}
+                        className={`text-xs underline ${onSkip ? 'text-slate-500 hover:text-slate-300 cursor-pointer' : 'text-slate-600 cursor-not-allowed'}`}
                     >
                         Not a Trinity setup? Log as manual trade
                     </button>

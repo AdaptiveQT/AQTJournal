@@ -1458,8 +1458,9 @@ const FlipMode: React.FC<{
     bbTouchVerified: false,
     emaBiasAligned: false
   });
+  const [trinitySkipped, setTrinitySkipped] = useState(false);
 
-  const allTrinityChecked = trinityChecks.obConfirmed && trinityChecks.bbTouchVerified && trinityChecks.emaBiasAligned;
+  const allTrinityChecked = trinitySkipped || (trinityChecks.obConfirmed && trinityChecks.bbTouchVerified && trinityChecks.emaBiasAligned);
 
   const [rules, setRules] = useState<TradingRule[]>([
     { id: '1', text: 'I am well-rested (7+ hours sleep)', checked: false },
@@ -1888,8 +1889,14 @@ const FlipMode: React.FC<{
               <TrinityChecklist
                 checks={trinityChecks}
                 onCheckChange={(key, value) => setTrinityChecks(prev => ({ ...prev, [key]: value }))}
-                required={true}
+                onSkip={() => setTrinitySkipped(true)}
+                required={!trinitySkipped}
               />
+              {trinitySkipped && (
+                <div className="mt-2 p-2 bg-yellow-900/30 border border-yellow-600/50 rounded text-center">
+                  <p className="text-xs text-yellow-400">⚠️ Manual trade mode — XP penalty applies</p>
+                </div>
+              )}
             </div>
 
             <button
@@ -1897,14 +1904,15 @@ const FlipMode: React.FC<{
                 handleAddTrade();
                 // Reset trinity checks after submission
                 setTrinityChecks({ obConfirmed: false, bbTouchVerified: false, emaBiasAligned: false });
+                setTrinitySkipped(false);
               }}
               disabled={!allTrinityChecked}
               className={`w-full py-3 rounded-lg font-bold transition-colors ${allTrinityChecked
-                ? 'bg-green-600 hover:bg-green-500'
+                ? trinitySkipped ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'
                 : 'bg-slate-600 cursor-not-allowed'
                 }`}
             >
-              {allTrinityChecked ? 'Log Trade' : 'Complete Trinity Checklist'}
+              {allTrinityChecked ? (trinitySkipped ? 'Log Manual Trade' : 'Log Trade') : 'Complete Trinity Checklist'}
             </button>
           </div>
         )}
@@ -1951,7 +1959,7 @@ const FlipMode: React.FC<{
           <p className="text-purple-100">{getTip()}</p>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
@@ -2963,13 +2971,8 @@ const RetailBeastApp: React.FC = () => {
     );
   }
 
-  // Gate 3: Force FlipMode for first 7 days
-  const daysSinceOnboarding = userProfile
-    ? Math.floor((Date.now() - new Date(userProfile.onboardingDate).getTime()) / (1000 * 60 * 60 * 24))
-    : 0;
-  const shouldForceFlipMode = daysSinceOnboarding < 7;
-
-  if (isFlipMode || shouldForceFlipMode) {
+  // FlipMode check (no longer forced - user can switch to Pro Mode)
+  if (isFlipMode) {
     return (
       <>
         <FlipMode
