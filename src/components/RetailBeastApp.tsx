@@ -2684,7 +2684,12 @@ const RetailBeastApp: React.FC = () => {
         }
       } else {
         if (typeof window !== "undefined") {
-          alert(`Google sign-in failed: ${error?.code || error?.message || err}`);
+          // Specific guidance for domain error
+          if (error?.code === "auth/unauthorized-domain") {
+            alert(`Domain not authorized by Firebase. Please go to Firebase Console > Authentication > Settings > Authorized Domains and add this domain (e.g., your-app.vercel.app).`);
+          } else {
+            alert(`Google sign-in failed: ${error?.code || error?.message || err}`);
+          }
         }
       }
     }
