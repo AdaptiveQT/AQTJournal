@@ -3772,7 +3772,9 @@ const RetailBeastApp: React.FC = () => {
                 <X size={24} />
               </button>
             </div>
-            <AnalyticsDashboard trades={accountTrades} currentBalance={balance} startBalance={activeAccount?.startingBalance || globalSettings.startBalance || 1000} />
+            <AnalyticsLock tradesLogged={trades.length} requiredTrades={10}>
+              <AnalyticsDashboard trades={accountTrades} currentBalance={balance} startBalance={activeAccount?.startingBalance || globalSettings.startBalance || 1000} />
+            </AnalyticsLock>
           </div>
         </div>
       )}
@@ -3795,7 +3797,9 @@ const RetailBeastApp: React.FC = () => {
                 <X size={24} />
               </button>
             </div>
-            <SmartInsights trades={accountTrades} />
+            <AnalyticsLock tradesLogged={trades.length} requiredTrades={10}>
+              <SmartInsights trades={accountTrades} />
+            </AnalyticsLock>
           </div>
         </div>
       )}
