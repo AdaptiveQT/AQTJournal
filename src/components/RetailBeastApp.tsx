@@ -243,6 +243,18 @@ type TradeInput = {
   imageUrl: string; // Screenshot base64 data URL
   entryType: EntryType; // Entry style categorization
 };
+// Violation Taxonomy - for non-Trinity trades
+const VIOLATION_REASONS = [
+  'No Fresh OB',
+  'No BB Touch',
+  'EMA Mismatch',
+  'Outside Killzone',
+  'No Stop Loss',
+  'Revenge / FOMO'
+] as const;
+type ViolationReason = typeof VIOLATION_REASONS[number];
+type SetupQuality = 'TRINITY' | 'STANDARD' | 'IMPULSE';
+
 type Trade = {
   id: string;
   pair: string;
@@ -259,6 +271,9 @@ type Trade = {
   notes: string;
   imageUrl?: string;
   entryType?: EntryType;
+  // Violation Taxonomy fields
+  setupQuality?: SetupQuality;
+  violationReason?: ViolationReason;
 };
 type GlobalSettings = {
   pipValue: number;
@@ -1461,8 +1476,12 @@ const FlipMode: React.FC<{
     emaBiasAligned: false
   });
   const [trinitySkipped, setTrinitySkipped] = useState(false);
+  const [selectedViolation, setSelectedViolation] = useState<ViolationReason | null>(null);
 
-  const allTrinityChecked = trinitySkipped || (trinityChecks.obConfirmed && trinityChecks.bbTouchVerified && trinityChecks.emaBiasAligned);
+  const isTrinityTrade = trinityChecks.obConfirmed && trinityChecks.bbTouchVerified && trinityChecks.emaBiasAligned;
+  const allTrinityChecked = trinitySkipped || isTrinityTrade;
+  // If skipped, require violation reason before submit
+  const canSubmitTrade = isTrinityTrade || (trinitySkipped && selectedViolation !== null);
 
   const [rules, setRules] = useState<TradingRule[]>([
     { id: '1', text: 'I am well-rested (7+ hours sleep)', checked: false },
@@ -1918,8 +1937,27 @@ const FlipMode: React.FC<{
                 required={!trinitySkipped}
               />
               {trinitySkipped && (
-                <div className="mt-2 p-2 bg-yellow-900/30 border border-yellow-600/50 rounded text-center">
-                  <p className="text-xs text-yellow-400">⚠️ Manual trade mode — XP penalty applies</p>
+                <div className="mt-3 p-4 bg-red-900/20 border border-red-500/50 rounded-lg">
+                  <p className="font-medium text-red-400 mb-3">Why was this not Trinity?</p>
+                  <p className="text-xs text-slate-400 mb-3">Pick the single biggest reason.</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {VIOLATION_REASONS.map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => setSelectedViolation(reason)}
+                        className={`p-2 rounded text-xs text-left transition-all ${selectedViolation === reason
+                          ? 'bg-red-500 text-white border-2 border-red-400'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600 border border-slate-600'
+                          }`}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedViolation && (
+                    <p className="text-xs text-yellow-400 mt-3">⚠️ {selectedViolation} — XP penalty applies</p>
+                  )}
                 </div>
               )}
             </div>
@@ -1927,17 +1965,21 @@ const FlipMode: React.FC<{
             <button
               onClick={() => {
                 handleAddTrade();
-                // Reset trinity checks after submission
+                // Reset trinity checks and violation after submission
                 setTrinityChecks({ obConfirmed: false, bbTouchVerified: false, emaBiasAligned: false });
                 setTrinitySkipped(false);
+                setSelectedViolation(null);
               }}
-              disabled={!allTrinityChecked}
-              className={`w-full py-3 rounded-lg font-bold transition-colors ${allTrinityChecked
-                ? trinitySkipped ? 'bg-yellow-600 hover:bg-yellow-500' : 'bg-green-600 hover:bg-green-500'
+              disabled={!canSubmitTrade}
+              className={`w-full py-3 rounded-lg font-bold transition-colors ${canSubmitTrade
+                ? trinitySkipped ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'
                 : 'bg-slate-600 cursor-not-allowed'
                 }`}
             >
-              {allTrinityChecked ? (trinitySkipped ? 'Log Manual Trade' : 'Log Trade') : 'Complete Trinity Checklist'}
+              {canSubmitTrade
+                ? (trinitySkipped ? `Log ${selectedViolation} Trade` : 'Log Trinity Trade')
+                : (trinitySkipped ? 'Select Violation Reason' : 'Complete Trinity Checklist')
+              }
             </button>
           </div>
         )}
