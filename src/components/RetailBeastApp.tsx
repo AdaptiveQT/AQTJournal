@@ -3132,7 +3132,7 @@ const RetailBeastApp: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white transition-colors">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-        <h2 className="text-xl font-bold">RetailBeastFX Journal</h2>
+        <h2 className="text-xl font-bold">RetailBeastFX — The System</h2>
         <p className="text-slate-500">Loading your data...</p>
       </div>
     );

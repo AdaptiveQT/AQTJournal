@@ -37,7 +37,7 @@ const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm flex items-center justify-center z-50">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">Loading RetailBeastFX Journal</h2>
+                    <h2 className="text-xl font-bold text-white mb-2">Loading The System</h2>
                     {text && <p className="text-slate-400">{text}</p>}
                 </div>
             </div>

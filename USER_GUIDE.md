@@ -1,8 +1,8 @@
-# RetailBeastFX Journal - User Guide
+# RetailBeastFX — The System: User Guide
 
 ## Quick Start (3 Steps)
 
-1. **Open the app**: Visit http://localhost:3000 (or your deployed URL)
+1. **Open the app**: Visit <http://localhost:3000> (or your deployed URL)
 2. **Choose your mode**: Click "Flip Mode" for simplified beginner experience, or stay in "Pro Mode" for full features
 3. **Start trading**: Log your first trade and track your journey!
 
@@ -22,22 +22,27 @@
 ## First Time Setup
 
 ### Step 1: Access the App
-- Open your browser and go to http://localhost:3000
+
+- Open your browser and go to <http://localhost:3000>
 - You'll see the landing page with "RetailBeastFX Pro"
 
 ### Step 2: Sign In (Optional but Recommended)
+
 You have 3 options:
 
 **Option A: Start Anonymously**
+
 - Click "Start Free Trial" or "Log In"
 - Data saves to your browser, but won't sync across devices
 
 **Option B: Sign in with Google**
+
 - Click "Continue with Google" button
 - Your data will sync across all devices
 - Keeps your data safe even if you clear browser
 
 **Option C: Sign in with Twitter**
+
 - Click "Continue with Twitter" button
 - Same benefits as Google sign-in
 
@@ -64,7 +69,7 @@ When you first enter the app, you'll see the **Configuration** section:
 
 ## Choosing Your Mode
 
-RetailBeastFX Journal has **two modes** designed for different experience levels:
+RetailBeastFX — The System has **two modes** designed for different experience levels:
 
 ### Quick Comparison
 
@@ -85,6 +90,7 @@ RetailBeastFX Journal has **two modes** designed for different experience levels
 ### How to Switch Modes
 
 Look for the mode toggle button in the **top-right header**:
+
 - **Flip Mode**: Blue/purple gradient button with ⚡ Zap icon
 - **Pro Mode**: Gray button with 📊 BarChart icon
 
@@ -95,20 +101,24 @@ Click to toggle between modes anytime. Your preference is saved.
 ## Flip Mode (For Beginners)
 
 ### Philosophy
+
 Flip Mode is designed to protect small account traders from the #1 mistake: **overtrading**. It focuses on discipline, daily goals, and steady growth.
 
 ### Daily Workflow
 
 #### 1. Morning Readiness Check ✅
+
 When you first open Flip Mode each day, you'll see a checklist:
 
 **Required Checks** (must complete all):
+
 - ✓ Did you sleep 7+ hours?
 - ✓ Have you reviewed yesterday's trades?
 - ✓ Do you know your trading plan for today?
 - ✓ Are you emotionally neutral?
 
 **Optional**:
+
 - Check major economic news
 
 > 💡 You cannot trade until you check all required boxes. This protects you from trading tired or emotional.
@@ -116,11 +126,13 @@ When you first open Flip Mode each day, you'll see a checklist:
 #### 2. View Your Dashboard 📊
 
 **Big Numbers** (top center):
+
 - **Current Balance**: Large display of your account
 - **Today's P&L**: How much you've made/lost today
 - **Daily Goal Progress**: Bar showing progress to your target
 
 **Flip Mode Settings** (collapsible panel):
+
 - **Daily Goal**: Your profit target for today (default: $50)
 - **Target Balance**: Your long-term goal (default: $1,000)
 - **Max Loss %**: Maximum daily loss allowed (default: 5%)
@@ -132,6 +144,7 @@ Click the settings header to expand/collapse.
 Find the **"Quick Trade Entry"** section:
 
 **Fields**:
+
 1. **Pair**: Currency pair (e.g., EURUSD, GBPJPY)
 2. **Direction**: Long or Short
 3. **Entry**: Your entry price
@@ -146,12 +159,14 @@ Click **"Log Trade"** to save.
 #### 4. Protection Systems 🛡️
 
 **Daily Goal Lock** (Mandatory):
+
 - When you hit your daily goal, a **green celebration screen** appears
 - Shows trophy icon and your profit
 - Only option: "I'm Done For Today" (logs you out)
 - **Why?**: Prevents giving back profits through overtrading
 
 **Max Loss Warning**:
+
 - When you lose 5% of your balance in one day, a **red warning** appears
 - You can override it, but it's strongly discouraged
 - **Why?**: Protects your account from revenge trading
@@ -159,22 +174,26 @@ Click **"Log Trade"** to save.
 #### 5. Track Your Progress 📈
 
 **Flip Progress** (visual bar):
+
 - Shows journey from Start → Current → Target Balance
 - Displays growth percentage
 - Shows dollars remaining to goal
 
 **Compound Calculator**:
+
 - Play with "what if" scenarios
 - See how daily % gains compound over time
 - Includes reality check warnings
 
 **Actionable Insight** (appears after 3+ trades):
+
 - "Your best setup is **Breakout** with 70% win rate"
 - Helps you focus on what works
 
 ### Flip Mode Limitations
 
 What you **WON'T** see in Flip Mode:
+
 - ❌ Configuration section (broker, balance editing, risk toggle)
 - ❌ Tier system details
 - ❌ Tax calculator
@@ -194,9 +213,11 @@ Pro Mode gives you complete control and all analytics.
 ### Configuration Section ⚙️
 
 **Balance**:
+
 - Current account size (editable anytime)
 
 **Broker Selection**:
+
 - IC Markets (min 0.01 lots, 1:500 leverage)
 - Pepperstone (min 0.01 lots, 1:500 leverage)
 - HankoTrade (min 0.01 lots, 1:500 leverage)
@@ -204,6 +225,7 @@ Pro Mode gives you complete control and all analytics.
 - Prop Firm (min 0.01 lots, 1:100 leverage)
 
 **Risk Mode**:
+
 - **SAFE**: Reduces position size by 50% (recommended during drawdowns)
 - **AGGR**: Full calculated position size
 
@@ -224,6 +246,7 @@ Your account progresses through **9 tiers** based on balance:
 | LEGEND | $5,000+ | 12 | Legendary performance |
 
 **What Tiers Do**:
+
 - Auto-calculate your position size (lot size)
 - Show progress bar to next tier
 - Determine risk per trade
@@ -231,17 +254,20 @@ Your account progresses through **9 tiers** based on balance:
 ### Metrics Display
 
 **Tier Card**:
+
 - Current tier name and description
 - Progress bar to next tier
 - Percentage complete
 
 **Position Sizing**:
+
 - **Lots**: Calculated lot size for next trade
 - **Risk**: Maximum $ risk per trade (15 pips at calculated lot size)
 
 ### Analytics Section 📈
 
 **Setup Performance Chart**:
+
 - Bar chart showing win rate by setup type
 - Only shows setups with 3+ trades
 - Helps identify your edge
@@ -251,6 +277,7 @@ Your account progresses through **9 tiers** based on balance:
 ### Trade Entry
 
 Same as Flip Mode, but:
+
 - ✅ **No 3-trade limit**
 - ✅ All 9 setup types available
 - ✅ All 7 emotion tags available
@@ -258,6 +285,7 @@ Same as Flip Mode, but:
 ### Journal Section 📖
 
 **Full Trade History**:
+
 - Shows all trades (not just today's)
 - Sortable by date
 - Displays: Date, Pair, Direction, Setup, Emotion, P&L
@@ -266,6 +294,7 @@ Same as Flip Mode, but:
 ### Export Features
 
 **Report Export** (Pro only):
+
 - Click the Report/Unlock button
 - Generates `.txt` file with:
   - Account overview
@@ -278,20 +307,24 @@ Same as Flip Mode, but:
 ## Common Features (Both Modes)
 
 ### Dark Mode / Light Mode 🌓
+
 - Click the **Sun/Moon** icon in the top-right
 - Persists across sessions
 
 ### Cloud Sync ☁️
+
 - All data syncs to Firebase in real-time
 - Works on all devices when signed in
 - Data persists even if you clear browser
 
 ### Trade Deletion
+
 - Click the trash icon (🗑️) next to any trade
 - Confirmation required
 - Automatically adjusts balance
 
 ### Offline Support
+
 - App works offline
 - Changes sync when you reconnect
 
@@ -380,7 +413,9 @@ Same as Flip Mode, but:
 ## Frequently Asked Questions
 
 ### How is lot size calculated?
+
 **Pro Mode**: Based on your tier and Safe/Aggr mode
+
 - Base lot = (Tier Min / 10) × 0.01
 - Safe Mode = Base lot × 0.5
 - AGGR Mode = Base lot × 1.0
@@ -388,19 +423,24 @@ Same as Flip Mode, but:
 **Flip Mode**: Always uses Safe Mode (auto-enabled)
 
 ### Can I change my starting balance?
+
 **Pro Mode**: Yes, edit the Balance field in Configuration
 **Flip Mode**: Yes, but it's hidden. Switch to Pro Mode to edit, then switch back.
 
 ### What happens when I hit daily goal in Pro Mode?
+
 Nothing! Pro Mode has no daily goal lock. You can keep trading.
 
 ### How do I reset the readiness checklist?
+
 It resets automatically at midnight (local time). Uses `localStorage` to track completion.
 
 ### Can I use this on mobile?
+
 Yes! The interface is fully responsive. Sign in with Google/Twitter to sync data.
 
 ### What's the difference between Free and Pro?
+
 | Feature | Free | Pro ($15/mo) |
 |---------|------|--------------|
 | Cloud-synced trades | 10 | Unlimited |
@@ -411,11 +451,13 @@ Yes! The interface is fully responsive. Sign in with Google/Twitter to sync data
 | Dark mode | ✅ | ✅ |
 | Flip Mode | ✅ | ✅ |
 
-### My trades disappeared!
+### My trades disappeared
+
 - If signed in: Check internet connection, data syncs from cloud
 - If anonymous: Clear cache can delete data. Sign in to prevent this.
 
 ### Can I import trades from another journal?
+
 Not currently. Feature coming soon via CSV import.
 
 ---

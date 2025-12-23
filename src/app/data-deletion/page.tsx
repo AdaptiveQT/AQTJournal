@@ -13,7 +13,7 @@ export default function DataDeletion() {
                 <section className="bg-[#1a1a1a] p-6 rounded-lg border border-gray-800">
                     <h2 className="text-xl font-semibold text-white mb-4">How to Delete Your Data</h2>
                     <p className="mb-4">
-                        If you wish to delete your account and all associated data from RetailBeastFX Journal, you can do so directly within the application or by contacting us.
+                        If you wish to delete your account and all associated data from RetailBeastFX — The System, you can do so directly within the application or by contacting us.
                     </p>
 
                     <h3 className="text-lg font-medium text-white mb-2">Method 1: In-App Deletion (Coming Soon)</h3>

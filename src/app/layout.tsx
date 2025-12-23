@@ -16,20 +16,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RetailBeastFX - Trading Journal & Analytics for Forex & Futures",
-  description: "Professional trading journal with setup expectancy, session heatmaps, R-multiple analytics, and MT4/MT5 import. Journal faster. Find your edge.",
+  title: "RetailBeastFX — The System | Trading Analytics & Mechanical Execution",
+  description: "The System provides mechanical trading execution with setup expectancy, session heatmaps, Trinity confluence analytics, and MT4/MT5 import. Log trades. Measure evolution.",
   keywords: ["trading journal", "forex journal", "futures journal", "MT4", "MT5", "expectancy", "trading analytics", "trade log"],
   authors: [{ name: "RetailBeastFX" }],
   openGraph: {
-    title: "RetailBeastFX - Trading Journal & Analytics",
-    description: "Journal faster. Find your edge. See which setups and sessions actually pay.",
+    title: "RetailBeastFX — The System",
+    description: "Mechanical execution. Trinity confluence. Measured evolution. The System demands discipline.",
     type: "website",
     siteName: "RetailBeastFX",
   },
   twitter: {
     card: "summary_large_image",
-    title: "RetailBeastFX - Trading Journal & Analytics",
-    description: "Journal faster. Find your edge. See which setups and sessions actually pay.",
+    title: "RetailBeastFX — The System",
+    description: "Mechanical execution. Trinity confluence. Measured evolution. The System demands discipline.",
   },
   robots: {
     index: true,

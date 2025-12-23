@@ -88,7 +88,7 @@ export async function exportToPDF(options: ExportOptions = {}): Promise<void> {
             pdf.setPage(i);
             pdf.setFontSize(8);
             pdf.setTextColor(148, 163, 184); // Light slate
-            pdf.text(`Page ${i} of ${pageCount} | RetailBeastFX Journal`, 105, 290, { align: 'center' });
+            pdf.text(`Page ${i} of ${pageCount} | RetailBeastFX — The System`, 105, 290, { align: 'center' });
         }
 
         // Save the PDF

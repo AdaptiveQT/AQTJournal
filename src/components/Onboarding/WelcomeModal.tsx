@@ -83,7 +83,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
                                 <Sparkles size={28} />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold">Welcome to RetailBeastFX Journal</h1>
+                                <h1 className="text-2xl font-bold">Welcome to The System</h1>
                                 <p className="text-blue-100 text-sm">Your trading edge, visualized</p>
                             </div>
                         </div>

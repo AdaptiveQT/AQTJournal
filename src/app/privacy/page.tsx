@@ -11,7 +11,7 @@ export default function PrivacyPolicy() {
                 <section>
                     <h2 className="text-xl font-semibold text-white mb-2">1. Introduction</h2>
                     <p>
-                        Welcome to RetailBeastFX Journal ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data.
+                        Welcome to RetailBeastFX — The System ("we," "our," or "us"). We respect your privacy and are committed to protecting your personal data.
                         This privacy policy allows you to understand what data we collect and how we use it.
                     </p>
                 </section>
