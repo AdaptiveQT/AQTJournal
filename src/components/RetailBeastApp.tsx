@@ -114,6 +114,7 @@ import TrinityChecklist from "./TrinityChecklist";
 import OnboardingProfile, { UserProfile } from "./Onboarding/OnboardingProfile";
 import ProtocolModal from "./Onboarding/ProtocolModal";
 import AnalyticsLock from "./AnalyticsLock";
+import ViolationEnforcementBanner, { useViolationEnforcement } from "./ViolationEnforcementBanner";
 
 // Demo Data
 import { DEMO_TRADES, DEMO_STATS } from "../data/demoTrades";
@@ -2164,6 +2165,9 @@ const RetailBeastApp: React.FC = () => {
   // XP Reward State
   const [xpReward, setXpReward] = useState<{ amount: number; message: string } | null>(null);
 
+  // Violation Enforcement State - 14 day rolling tracking
+  const violationEnforcement = useViolationEnforcement(trades);
+
   // Check for Weekly Review Requirement
   useEffect(() => {
     if (trades.length < 10) return; // Feature locked until 10 trades
@@ -3263,6 +3267,9 @@ const RetailBeastApp: React.FC = () => {
       <ServiceWorkerRegistrar />
 
       <div className="max-w-7xl mx-auto space-y-4 p-4" id="dashboard">
+        {/* ENFORCEMENT BANNER - Displays when 3+ violations in 14 days */}
+        <ViolationEnforcementBanner trades={trades} />
+
         {/* HEADER */}
         <div className="flex flex-col md:flex-row justify-between items-center py-2">
           <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
