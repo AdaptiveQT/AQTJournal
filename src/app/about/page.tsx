@@ -62,6 +62,7 @@ export default function AboutPage() {
 
                 {/* Minimal Footer */}
                 <footer className="mt-16 pt-8 border-t border-slate-800 text-center text-sm text-slate-500">
+                    <p className="italic text-slate-400 mb-2">&quot;The System judges compliance, not profit.&quot;</p>
                     <p>© 2025 RetailBeastFX. The System.</p>
                 </footer>
             </div>

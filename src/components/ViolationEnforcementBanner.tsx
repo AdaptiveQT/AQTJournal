@@ -69,7 +69,7 @@ export default function ViolationEnforcementBanner({ trades }: ViolationEnforcem
 
     // Update time on mount and when trades change
     useEffect(() => {
-        setCurrentTime(Date.now());
+        requestAnimationFrame(() => setCurrentTime(Date.now()));
     }, [trades]);
 
     const enforcement = useMemo(() => {
@@ -96,8 +96,8 @@ export default function ViolationEnforcementBanner({ trades }: ViolationEnforcem
                             <span className="font-bold">{enforcement.violationCount} violations</span> in the last 14 days.
                             Journal is locked. Review your trades. No new entries until violations age out.
                         </p>
-                        <p className="text-red-400/70 text-xs mt-2">
-                            The System enforces discipline. Wait for violations to exit the 14-day window.
+                        <p className="text-red-400/70 text-xs mt-2 italic">
+                            &quot;You weren&apos;t stopped by the market. You were stopped by the system.&quot;
                         </p>
                     </div>
                 </div>
@@ -138,7 +138,7 @@ export function useViolationEnforcement(trades: Trade[]) {
 
     // Update time on mount and when trades change
     useEffect(() => {
-        setCurrentTime(Date.now());
+        requestAnimationFrame(() => setCurrentTime(Date.now()));
     }, [trades]);
 
     return useMemo(() => {
