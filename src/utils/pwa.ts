@@ -114,7 +114,7 @@ export async function syncOfflineTrades(trades: any[]): Promise<void> {
 // IndexedDB storage for offline trades
 async function storeOfflineTrades(trades: any[]): Promise<void> {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('AQTJournal', 1);
+        const request = indexedDB.open('RetailBeastFXJournal', 1);
 
         request.onerror = () => reject(request.error);
 

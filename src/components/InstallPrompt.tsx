@@ -51,7 +51,7 @@ const InstallPrompt: React.FC = () => {
                     <Download size={24} />
                 </div>
                 <div className="flex-1">
-                    <h3 className="font-bold mb-1">Install AQT Journal</h3>
+                    <h3 className="font-bold mb-1">Install RetailBeastFX Journal</h3>
                     <p className="text-sm opacity-90 mb-3">
                         Install our app for faster access, offline support, and a native experience!
                     </p>

@@ -1,4 +1,4 @@
-# AQT Journal - User Guide
+# RetailBeastFX Journal - User Guide
 
 ## Quick Start (3 Steps)
 
@@ -23,7 +23,7 @@
 
 ### Step 1: Access the App
 - Open your browser and go to http://localhost:3000
-- You'll see the landing page with "AQT Pro"
+- You'll see the landing page with "RetailBeastFX Pro"
 
 ### Step 2: Sign In (Optional but Recommended)
 You have 3 options:
@@ -64,7 +64,7 @@ When you first enter the app, you'll see the **Configuration** section:
 
 ## Choosing Your Mode
 
-AQT Journal has **two modes** designed for different experience levels:
+RetailBeastFX Journal has **two modes** designed for different experience levels:
 
 ### Quick Comparison
 

@@ -96,7 +96,7 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                 {
                     subtitle: 'Multiple Accounts',
                     content: [
-                        'AQT supports **multiple trading accounts**:',
+                        'RetailBeastFX supports **multiple trading accounts**:',
                         '• Click the **Account Manager** button (person icon) in the header',
                         '• Add accounts with different brokers and starting balances',
                         '• Switch between accounts to see separate trade history',
@@ -192,7 +192,7 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                         '2. Right-click → Select "All History" or date range',
                         '3. Right-click again → **Report → Open XML (Excel)**',
                         '4. Or: Right-click → **Report → HTML (Detailed)**',
-                        '5. Import the saved file in AQT',
+                        '5. Import the saved file in RetailBeastFX',
                     ]
                 },
                 {
@@ -357,7 +357,7 @@ const HelpGuide: React.FC<HelpGuideProps> = ({ isOpen, onClose }) => {
                 <div className="flex items-center justify-between p-5 border-b border-white/10">
                     <div className="flex items-center gap-3">
                         <BookOpen size={28} className="text-blue-400" />
-                        <h2 className="text-2xl font-bold text-white">AQT User Guide</h2>
+                        <h2 className="text-2xl font-bold text-white">RetailBeastFX User Guide</h2>
                     </div>
                     <button
                         onClick={onClose}

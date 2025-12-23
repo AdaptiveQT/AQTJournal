@@ -83,7 +83,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
                                 <Sparkles size={28} />
                             </div>
                             <div>
-                                <h1 className="text-2xl font-bold">Welcome to AQT Journal</h1>
+                                <h1 className="text-2xl font-bold">Welcome to RetailBeastFX Journal</h1>
                                 <p className="text-blue-100 text-sm">Your trading edge, visualized</p>
                             </div>
                         </div>
@@ -139,8 +139,8 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
                                     }}
                                     placeholder="10000"
                                     className={`w-full pl-12 pr-4 py-4 text-2xl font-bold rounded-xl border-2 transition-all ${balanceError
-                                            ? 'border-red-500 focus:ring-red-500'
-                                            : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500'
+                                        ? 'border-red-500 focus:ring-red-500'
+                                        : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500'
                                         } ${darkMode ? 'bg-slate-800 text-white' : 'bg-white text-slate-900'} outline-none focus:ring-2`}
                                     autoFocus
                                     onKeyDown={(e) => e.key === 'Enter' && handleBalanceSubmit()}
@@ -161,10 +161,10 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({
                                             setBalanceError('');
                                         }}
                                         className={`px-3 py-1.5 text-sm rounded-lg transition-all ${balanceInput === amount.toString()
-                                                ? 'bg-blue-500 text-white'
-                                                : darkMode
-                                                    ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            ? 'bg-blue-500 text-white'
+                                            : darkMode
+                                                ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                             }`}
                                     >
                                         ${amount.toLocaleString()}
