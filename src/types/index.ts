@@ -163,7 +163,8 @@ export const VIOLATION_REASONS = [
     'EMA Mismatch',
     'Outside Killzone',
     'No Stop Loss',
-    'Revenge / FOMO'
+    'Revenge / FOMO',
+    'Indicator-Induced Trade'
 ] as const;
 export type ViolationReason = typeof VIOLATION_REASONS[number];
 export type SetupQuality = 'TRINITY' | 'STANDARD' | 'IMPULSE';
