@@ -9,9 +9,11 @@ export default function RulesModal() {
 
     // Check localStorage after hydration
     useEffect(() => {
-        setHasMounted(true);
-        const hasSeenRules = localStorage.getItem('rbfx_rules_accepted');
-        if (!hasSeenRules) setIsOpen(true);
+        requestAnimationFrame(() => {
+            setHasMounted(true);
+            const hasSeenRules = localStorage.getItem('rbfx_rules_accepted');
+            if (!hasSeenRules) setIsOpen(true);
+        });
     }, []);
 
     const handleAccept = () => {
@@ -101,8 +103,8 @@ export default function RulesModal() {
                                 <div className="text-gray-500">Unmitigated</div>
                             </div>
                             <div className="bg-gray-900 p-2 rounded">
-                                <div className="text-[#39FF14] font-bold">BB 2.0</div>
-                                <div className="text-gray-500">Exhaustion</div>
+                                <div className="text-[#39FF14] font-bold">BB 1.0</div>
+                                <div className="text-gray-500">Touch (Locked)</div>
                             </div>
                             <div className="bg-gray-900 p-2 rounded">
                                 <div className="text-[#39FF14] font-bold">Vol Spike</div>

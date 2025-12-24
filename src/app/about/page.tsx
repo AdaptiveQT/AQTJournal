@@ -58,6 +58,27 @@ export default function AboutPage() {
                     <p className="text-2xl font-bold text-center text-white">
                         No setup. No shot. No cope.
                     </p>
+
+                    {/* Scope & Boundaries */}
+                    <div className="mt-12 p-6 bg-red-900/20 border border-red-500/30 rounded-lg">
+                        <h3 className="text-red-400 font-bold text-sm uppercase tracking-wide mb-4">
+                            ⚠️ Scope &amp; Boundaries
+                        </h3>
+                        <div className="space-y-3 text-sm text-slate-300">
+                            <p>
+                                <strong className="text-white">RetailBeastFX — The System</strong> is designed and tested only for <strong className="text-emerald-400">FX majors</strong> and <strong className="text-amber-400">Gold (XAUUSD)</strong>.
+                            </p>
+                            <p>
+                                It relies on the dual-session liquidity collision between <strong className="text-cyan-400">London (02:00–05:00 ET)</strong> and <strong className="text-orange-400">New York (08:00–11:00 ET)</strong> killzones.
+                            </p>
+                            <p className="text-red-400 font-medium">
+                                Indices, stocks, crypto, and all other assets are <strong>outside the system</strong>.
+                            </p>
+                            <p className="text-slate-500 text-xs mt-4">
+                                No modes. No presets. No exceptions. No &quot;try it anyway&quot; guidance.
+                            </p>
+                        </div>
+                    </div>
                 </article>
 
                 {/* Minimal Footer */}

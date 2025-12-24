@@ -6,7 +6,7 @@ import { Trade } from '@/types';
 // Trinity confluence keywords to check in setup or tags
 const TRINITY_CONFLUENCES = {
     FRESH_OB: ['fresh ob', 'order block', 'ob pullback', 'fresh'],
-    BB_EXTREME: ['bb 2.0', 'bb extreme', 'bollinger', 'exhaustion', '2sd'],
+    BB_EXTREME: ['bb 1.0', 'bb touch', 'bollinger', 'exhaustion', '1sd'],
     VOL_SPIKE: ['vol spike', 'volume', 'surge', 'delta', 'killzone volume'],
 };
 

@@ -12,7 +12,8 @@ const PROTOCOL_RULES = [
     { id: 2, text: 'I will only enter with FULL Trinity confluence (OB + BB 1.0 + EMA 8/21)', penalty: 'Violation logged' },
     { id: 3, text: 'I will not tune BB deviation — it is locked to 1.0', penalty: 'Non-System Configuration' },
     { id: 4, text: 'I will log every trade and every violation without exception', penalty: 'Required' },
-    { id: 5, text: 'I accept The System judges compliance, not P&L', penalty: null },
+    { id: 5, text: 'I will only trade FX majors and Gold — indices, stocks, crypto are outside the system', penalty: 'Not supported' },
+    { id: 6, text: 'I accept The System judges compliance, not P&L', penalty: null },
 ];
 
 export default function ProtocolModal({ onAccept }: ProtocolModalProps) {

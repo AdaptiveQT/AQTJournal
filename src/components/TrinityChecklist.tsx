@@ -27,7 +27,7 @@ export default function TrinityChecklist({ checks, onCheckChange, onSkip, requir
         {
             key: 'bbTouchVerified' as const,
             label: 'BB touch verified?',
-            description: 'Price touched BB 1.0 or 2.0 deviation'
+            description: 'Price touched BB 1.0 (20/1.0 locked)'
         },
         {
             key: 'emaBiasAligned' as const,
