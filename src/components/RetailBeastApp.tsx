@@ -55,6 +55,7 @@ import {
   Image as ImageIcon,
   User as UserIcon,
   Calendar,
+  Plus,
 } from "lucide-react";
 import {
   LineChart,
@@ -104,6 +105,8 @@ import WelcomeModal from "./Onboarding/WelcomeModal";
 import OnboardingChecklist from "./Onboarding/OnboardingChecklist";
 import FlipModeSettings from "./FlipMode/FlipModeSettings";
 import AccountManager from "./Account/AccountManager";
+import AddAccountPanel from "./Account/AddAccountPanel";
+import AccountSwitcher from "./Account/AccountSwitcher";
 import VirtualizedTradeTable from "./VirtualizedTradeTable";
 import { MascotPeek } from "./Mascot/MascotPeek";
 import ScreenshotUpload from "./ScreenshotUpload";
@@ -2113,6 +2116,7 @@ const RetailBeastApp: React.FC = () => {
   const [accounts, setAccounts] = useState<TradingAccount[]>([]);
   const [activeAccountId, setActiveAccountId] = useState<string | null>(null);
   const [showAccountManager, setShowAccountManager] = useState(false);
+  const [showAddAccountPanel, setShowAddAccountPanel] = useState(false);
   const [balanceOperations, setBalanceOperations] = useState<BalanceOperation[]>([]);
 
   // Onboarding State (Protocol Modal → OnboardingProfile → Journal)
@@ -3354,23 +3358,28 @@ const RetailBeastApp: React.FC = () => {
             </div>
 
 
-            {/* Account & Import - Hidden on mobile */}
-            <div className="hidden sm:flex gap-2">
+            {/* Account Switcher & Add Account */}
+            <div className="hidden sm:flex items-center gap-3">
+              <AccountSwitcher
+                accounts={accounts}
+                activeAccountId={activeAccountId}
+                balance={balance}
+                totalPnL={trades.reduce((sum, t) => sum + t.pnl, 0)}
+                onSelectAccount={(id) => setActiveAccountId(id)}
+                onAddAccount={() => setShowAddAccountPanel(true)}
+                onManageAccounts={() => setShowAccountManager(true)}
+                darkMode={darkMode}
+              />
               <button
-                onClick={() => setShowAccountManager(true)}
-                className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 text-blue-500 dark:text-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 transition-all border border-blue-300/30 dark:border-blue-500/20 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/20"
-                title="Account Manager"
+                onClick={() => setShowAddAccountPanel(true)}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-400 hover:to-teal-500 transition-all shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 hover:scale-105 flex items-center gap-2 font-bold text-sm"
+                title="Add Account / Import Trades"
               >
-                <UserIcon size={20} />
-              </button>
-              <button
-                onClick={() => setShowImportWizard(true)}
-                className="p-2.5 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-400 hover:to-emerald-500 transition-all shadow-lg shadow-green-500/30 hover:shadow-green-500/50 hover:scale-110"
-                title="Import Trades (MT4/MT5)"
-              >
-                <Upload size={20} />
+                <Plus size={18} />
+                <span className="hidden lg:inline">Add Account</span>
               </button>
             </div>
+
 
             {/* Settings */}
             <div className="flex bg-slate-100 dark:bg-slate-800 rounded-full p-1 border border-slate-200 dark:border-white/5">
@@ -4477,6 +4486,37 @@ const RetailBeastApp: React.FC = () => {
               }
               return acc;
             }));
+          }
+        }}
+        darkMode={darkMode}
+      />
+
+      {/* Add Account Panel (FXReplay-style) */}
+      <AddAccountPanel
+        isOpen={showAddAccountPanel}
+        onClose={() => setShowAddAccountPanel(false)}
+        onOpenImportWizard={() => {
+          setShowAddAccountPanel(false);
+          setShowImportWizard(true);
+        }}
+        onCreateManualAccount={(accountData) => {
+          const newAccount: TradingAccount = {
+            id: `acc-${Date.now()}`,
+            name: accountData.name || 'Manual Account',
+            accountNumber: accountData.accountNumber || String(Date.now()),
+            broker: accountData.broker || 'Unknown',
+            currency: accountData.currency || 'USD',
+            createdAt: Date.now(),
+            lastUpdated: Date.now(),
+            startingBalance: accountData.startingBalance || 0,
+          };
+          setAccounts(prev => [...prev, newAccount]);
+          if (!activeAccountId) {
+            setActiveAccountId(newAccount.id);
+          }
+          if (newAccount.startingBalance && newAccount.startingBalance > 0) {
+            setBalance(newAccount.startingBalance);
+            setBalanceInput(String(newAccount.startingBalance));
           }
         }}
         darkMode={darkMode}

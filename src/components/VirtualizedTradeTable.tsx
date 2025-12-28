@@ -10,8 +10,11 @@ import {
     Filter,
     Search,
     X,
-    Check,
-    MessageSquare
+    MessageSquare,
+    TrendingUp,
+    Calendar,
+    ArrowUpRight,
+    ArrowDownRight
 } from 'lucide-react';
 
 // Define Trade type locally to avoid import issues
@@ -41,7 +44,7 @@ interface VirtualizedTradeTableProps {
 type SortKey = 'date' | 'pair' | 'direction' | 'pnl' | 'setup';
 type SortDir = 'asc' | 'desc';
 
-const ROW_HEIGHT = 52;
+const ROW_HEIGHT = 64; // Increased for more spacious design
 
 const VirtualizedTradeTable: React.FC<VirtualizedTradeTableProps> = ({
     trades,
@@ -154,100 +157,138 @@ const VirtualizedTradeTable: React.FC<VirtualizedTradeTableProps> = ({
         return sortDir === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
     };
 
+    // Calculate stats
+    const totalPnL = filteredTrades.reduce((sum, t) => sum + t.pnl, 0);
+    const winCount = filteredTrades.filter(t => t.pnl > 0).length;
+    const winRate = filteredTrades.length > 0 ? (winCount / filteredTrades.length * 100).toFixed(0) : '0';
+
     return (
-        <div className={`rounded-xl border ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'} overflow-hidden`}>
-            {/* Filter Bar */}
-            <div className={`p-3 border-b ${darkMode ? 'border-slate-700 bg-slate-800/50' : 'border-slate-200 bg-slate-50'}`}>
-                <div className="flex flex-wrap items-center gap-2">
-                    {/* Search */}
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg flex-1 min-w-[200px] ${darkMode ? 'bg-slate-700' : 'bg-white border border-slate-200'}`}>
-                        <Search size={16} className="text-slate-400" />
+        <div className={`rounded-2xl overflow-hidden ${darkMode
+            ? 'bg-gradient-to-b from-slate-800/80 to-slate-900/80 border border-slate-700/50 shadow-xl shadow-black/20'
+            : 'bg-white border border-slate-200 shadow-lg shadow-slate-200/50'}`}
+        >
+            {/* Enhanced Filter Bar */}
+            <div className={`p-4 border-b ${darkMode ? 'border-slate-700/50 bg-slate-800/50' : 'border-slate-100 bg-slate-50/80'}`}>
+                <div className="flex flex-wrap items-center gap-3">
+                    {/* Search with glow effect */}
+                    <div className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl flex-1 min-w-[220px] transition-all
+                        ${darkMode
+                            ? 'bg-slate-900/80 border border-slate-600/50 focus-within:border-emerald-500/50 focus-within:shadow-lg focus-within:shadow-emerald-500/10'
+                            : 'bg-white border border-slate-200 focus-within:border-blue-400 focus-within:shadow-lg focus-within:shadow-blue-100'}`}
+                    >
+                        <Search size={18} className={darkMode ? 'text-slate-500' : 'text-slate-400'} />
                         <input
                             type="text"
                             placeholder="Search trades..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className={`flex-1 bg-transparent outline-none text-sm ${darkMode ? 'text-white placeholder-slate-400' : 'text-slate-900 placeholder-slate-400'}`}
+                            className={`flex-1 bg-transparent outline-none text-sm font-medium ${darkMode ? 'text-white placeholder-slate-500' : 'text-slate-900 placeholder-slate-400'}`}
                         />
                         {searchQuery && (
-                            <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600">
-                                <X size={14} />
+                            <button onClick={() => setSearchQuery('')} className="p-1 rounded-full hover:bg-slate-700/50">
+                                <X size={14} className="text-slate-400" />
                             </button>
                         )}
                     </div>
 
-                    {/* Pair Filter */}
-                    <select
-                        value={pairFilter}
-                        onChange={(e) => setPairFilter(e.target.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white border border-slate-200'}`}
-                    >
-                        <option value="">All Pairs</option>
-                        {pairs.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-2">
+                        <select
+                            value={pairFilter}
+                            onChange={(e) => setPairFilter(e.target.value)}
+                            className={`px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all
+                                ${darkMode
+                                    ? 'bg-slate-900/80 text-slate-200 border border-slate-600/50 hover:border-slate-500'
+                                    : 'bg-white border border-slate-200 hover:border-slate-300'}`}
+                        >
+                            <option value="">All Pairs</option>
+                            {pairs.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
 
-                    {/* Direction Filter */}
-                    <select
-                        value={directionFilter}
-                        onChange={(e) => setDirectionFilter(e.target.value as '' | 'Long' | 'Short')}
-                        className={`px-3 py-1.5 rounded-lg text-sm ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white border border-slate-200'}`}
-                    >
-                        <option value="">All Directions</option>
-                        <option value="Long">Long</option>
-                        <option value="Short">Short</option>
-                    </select>
+                        <select
+                            value={directionFilter}
+                            onChange={(e) => setDirectionFilter(e.target.value as '' | 'Long' | 'Short')}
+                            className={`px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all
+                                ${darkMode
+                                    ? 'bg-slate-900/80 text-slate-200 border border-slate-600/50 hover:border-slate-500'
+                                    : 'bg-white border border-slate-200 hover:border-slate-300'}`}
+                        >
+                            <option value="">All Directions</option>
+                            <option value="Long">🟢 Long</option>
+                            <option value="Short">🔴 Short</option>
+                        </select>
 
-                    {/* Setup Filter */}
-                    <select
-                        value={setupFilter}
-                        onChange={(e) => setSetupFilter(e.target.value)}
-                        className={`px-3 py-1.5 rounded-lg text-sm ${darkMode ? 'bg-slate-700 text-white border-slate-600' : 'bg-white border border-slate-200'}`}
-                    >
-                        <option value="">All Setups</option>
-                        {setups.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                        <select
+                            value={setupFilter}
+                            onChange={(e) => setSetupFilter(e.target.value)}
+                            className={`px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all
+                                ${darkMode
+                                    ? 'bg-slate-900/80 text-slate-200 border border-slate-600/50 hover:border-slate-500'
+                                    : 'bg-white border border-slate-200 hover:border-slate-300'}`}
+                        >
+                            <option value="">All Setups</option>
+                            {setups.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                    </div>
 
                     {/* Clear Filters */}
                     {hasFilters && (
                         <button
                             onClick={clearFilters}
-                            className="px-3 py-1.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg flex items-center gap-1"
+                            className="px-4 py-2 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl flex items-center gap-1.5 transition-all"
                         >
                             <X size={14} /> Clear
                         </button>
                     )}
 
-                    {/* Count */}
-                    <div className={`text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {filteredTrades.length} trades
+                    {/* Stats Badge */}
+                    <div className={`ml-auto flex items-center gap-4 px-4 py-2 rounded-xl ${darkMode ? 'bg-slate-900/50' : 'bg-slate-100'}`}>
+                        <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Trades</span>
+                            <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{filteredTrades.length}</span>
+                        </div>
+                        <div className={`w-px h-4 ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                        <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Win Rate</span>
+                            <span className="text-sm font-bold text-emerald-500">{winRate}%</span>
+                        </div>
+                        <div className={`w-px h-4 ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`} />
+                        <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>P&L</span>
+                            <span className={`text-sm font-bold ${totalPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                {totalPnL >= 0 ? '+' : ''}${totalPnL.toFixed(2)}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Table Header */}
-            <div className={`grid grid-cols-[100px_80px_70px_90px_90px_80px_100px] gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                <button onClick={() => handleSort('date')} className="flex items-center gap-1 hover:text-blue-500">
-                    Date <SortIcon column="date" />
+            {/* Enhanced Table Header */}
+            <div className={`grid grid-cols-[minmax(110px,1fr)_minmax(90px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_100px] gap-3 px-5 py-3 text-xs font-bold uppercase tracking-wider
+                ${darkMode ? 'bg-slate-800/80 text-slate-400 border-b border-slate-700/50' : 'bg-slate-100 text-slate-500 border-b border-slate-200'}`}
+            >
+                <button onClick={() => handleSort('date')} className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors">
+                    <Calendar size={14} /> Date <SortIcon column="date" />
                 </button>
-                <button onClick={() => handleSort('pair')} className="flex items-center gap-1 hover:text-blue-500">
+                <button onClick={() => handleSort('pair')} className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors">
                     Pair <SortIcon column="pair" />
                 </button>
-                <button onClick={() => handleSort('direction')} className="flex items-center gap-1 hover:text-blue-500">
-                    Dir <SortIcon column="direction" />
+                <button onClick={() => handleSort('direction')} className="flex items-center gap-1.5 hover:text-emerald-400 transition-colors">
+                    Type <SortIcon column="direction" />
                 </button>
                 <div className="text-right">Entry</div>
                 <div className="text-right">Exit</div>
-                <button onClick={() => handleSort('pnl')} className="flex items-center gap-1 justify-end hover:text-blue-500">
+                <button onClick={() => handleSort('pnl')} className="flex items-center gap-1.5 justify-end hover:text-emerald-400 transition-colors">
                     P&L <SortIcon column="pnl" />
                 </button>
-                <div className="text-right">Actions</div>
+                <div className="text-center">Actions</div>
             </div>
 
             {/* Virtualized List */}
             <div
                 ref={parentRef}
-                className="overflow-auto"
-                style={{ height: Math.min(filteredTrades.length * ROW_HEIGHT, 400) }}
+                className="overflow-auto scroll-smooth"
+                style={{ height: Math.min(filteredTrades.length * ROW_HEIGHT, 480) }}
             >
                 <div
                     style={{
@@ -258,59 +299,107 @@ const VirtualizedTradeTable: React.FC<VirtualizedTradeTableProps> = ({
                 >
                     {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                         const trade = filteredTrades[virtualRow.index];
+                        const isWin = trade.pnl > 0;
+
                         return (
                             <div
                                 key={trade.id}
-                                className={`absolute top-0 left-0 w-full grid grid-cols-[100px_80px_70px_90px_90px_80px_100px] gap-2 items-center px-4 border-b ${darkMode
-                                        ? 'border-slate-700 hover:bg-slate-700/50'
-                                        : 'border-slate-100 hover:bg-slate-50'
+                                className={`absolute top-0 left-0 w-full grid grid-cols-[minmax(110px,1fr)_minmax(90px,1fr)_minmax(80px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_minmax(100px,1fr)_100px] gap-3 items-center px-5 transition-all
+                                    ${darkMode
+                                        ? 'border-b border-slate-700/30 hover:bg-slate-700/30'
+                                        : 'border-b border-slate-100 hover:bg-slate-50'
                                     }`}
                                 style={{
                                     height: `${virtualRow.size}px`,
                                     transform: `translateY(${virtualRow.start}px)`,
                                 }}
                             >
-                                <div className={`text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                    {trade.date}
+                                {/* Date */}
+                                <div className="flex items-center gap-2">
+                                    <div className={`w-1.5 h-8 rounded-full ${isWin ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                                    <div>
+                                        <div className={`text-sm font-medium ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+                                            {trade.date}
+                                        </div>
+                                        {trade.time && (
+                                            <div className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                                {trade.time}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+
+                                {/* Pair */}
+                                <div className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                                     {trade.pair}
                                 </div>
-                                <div className={`text-sm font-medium ${trade.direction === 'Long' ? 'text-green-500' : 'text-red-500'}`}>
-                                    {trade.direction}
+
+                                {/* Direction Pill */}
+                                <div>
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold
+                                        ${trade.direction === 'Long'
+                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                        }`}
+                                    >
+                                        {trade.direction === 'Long'
+                                            ? <ArrowUpRight size={12} />
+                                            : <ArrowDownRight size={12} />
+                                        }
+                                        {trade.direction}
+                                    </span>
                                 </div>
-                                <div className={`text-sm text-right ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                    {trade.entry.toFixed(5)}
+
+                                {/* Entry */}
+                                <div className={`text-sm text-right font-mono ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    {trade.entry.toFixed(trade.pair.includes('JPY') ? 3 : 5)}
                                 </div>
-                                <div className={`text-sm text-right ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                                    {trade.exit.toFixed(5)}
+
+                                {/* Exit */}
+                                <div className={`text-sm text-right font-mono ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                                    {trade.exit.toFixed(trade.pair.includes('JPY') ? 3 : 5)}
                                 </div>
-                                <div className={`text-sm font-bold text-right ${trade.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                    {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+
+                                {/* P&L with glow */}
+                                <div className={`text-right`}>
+                                    <span className={`text-sm font-bold ${isWin
+                                        ? 'text-emerald-400'
+                                        : 'text-red-400'}`}
+                                    >
+                                        {isWin ? '+' : ''}${trade.pnl.toFixed(2)}
+                                    </span>
                                 </div>
-                                <div className="flex items-center justify-end gap-1">
+
+                                {/* Actions */}
+                                <div className="flex items-center justify-center gap-1">
                                     {trade.notes && (
                                         <button
                                             onClick={() => onViewNotes?.(trade.id)}
-                                            className={`p-1.5 rounded ${darkMode ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}
+                                            className={`p-2 rounded-lg transition-all ${darkMode
+                                                ? 'hover:bg-slate-600/50 text-slate-400 hover:text-slate-200'
+                                                : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}
                                             title="View notes"
                                         >
-                                            <MessageSquare size={14} className="text-slate-400" />
+                                            <MessageSquare size={16} />
                                         </button>
                                     )}
                                     <button
                                         onClick={() => onEdit?.(trade.id)}
-                                        className={`p-1.5 rounded ${darkMode ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}
+                                        className={`p-2 rounded-lg transition-all ${darkMode
+                                            ? 'hover:bg-blue-500/20 text-blue-400'
+                                            : 'hover:bg-blue-50 text-blue-500'}`}
                                         title="Edit"
                                     >
-                                        <Edit2 size={14} className="text-blue-500" />
+                                        <Edit2 size={16} />
                                     </button>
                                     <button
                                         onClick={() => onDelete?.(trade.id)}
-                                        className={`p-1.5 rounded ${darkMode ? 'hover:bg-slate-600' : 'hover:bg-slate-200'}`}
+                                        className={`p-2 rounded-lg transition-all ${darkMode
+                                            ? 'hover:bg-red-500/20 text-red-400'
+                                            : 'hover:bg-red-50 text-red-500'}`}
                                         title="Delete"
                                     >
-                                        <Trash2 size={14} className="text-red-500" />
+                                        <Trash2 size={16} />
                                     </button>
                                 </div>
                             </div>
@@ -321,15 +410,24 @@ const VirtualizedTradeTable: React.FC<VirtualizedTradeTableProps> = ({
 
             {/* Empty State */}
             {filteredTrades.length === 0 && (
-                <div className={`p-8 text-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                <div className={`p-12 text-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     {hasFilters ? (
-                        <>
-                            <Filter size={32} className="mx-auto mb-2 opacity-50" />
-                            <p>No trades match your filters</p>
-                            <button onClick={clearFilters} className="text-blue-500 text-sm mt-2">Clear filters</button>
-                        </>
+                        <div className="space-y-3">
+                            <Filter size={40} className="mx-auto opacity-30" />
+                            <p className="font-medium">No trades match your filters</p>
+                            <button
+                                onClick={clearFilters}
+                                className="text-emerald-500 text-sm font-medium hover:text-emerald-400 transition-colors"
+                            >
+                                Clear all filters
+                            </button>
+                        </div>
                     ) : (
-                        <p>No trades yet</p>
+                        <div className="space-y-3">
+                            <TrendingUp size={40} className="mx-auto opacity-30" />
+                            <p className="font-medium">No trades yet</p>
+                            <p className="text-sm opacity-70">Start adding trades to see your history here</p>
+                        </div>
                     )}
                 </div>
             )}

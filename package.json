@@ -21,6 +21,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
     "lucide-react": "^0.454.0",
+    "metaapi.cloud-sdk": "^29.3.2",
     "next": "16.0.7",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
