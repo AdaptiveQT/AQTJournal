@@ -70,10 +70,17 @@ const MetaApiConnectModal: React.FC<MetaApiConnectModalProps> = ({
                 })
             });
 
-            const data = await response.json();
+            const responseText = await response.text();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Non-JSON response:', responseText);
+                throw new Error(`Server Error: ${response.status} ${response.statusText}`);
+            }
 
             if (!response.ok) {
-                throw new Error(data.error || 'Connection failed');
+                throw new Error(data.error || `Connection failed: ${response.statusText}`);
             }
 
             setStep('success');
