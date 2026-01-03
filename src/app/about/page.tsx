@@ -51,7 +51,7 @@ export default function AboutPage() {
                         The devil robot mascot emerged as the enforcer—ruthless, emotionless, watching every violation.
                     </p>
 
-                    <p>This is not a strategy. It&apos;s a contract.</p>
+                    <p>This is not a strategy. It is a <strong>permission framework</strong>.</p>
 
                     <hr className="border-slate-700 my-8" />
 
