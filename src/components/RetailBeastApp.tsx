@@ -129,7 +129,7 @@ import { registerServiceWorker, setupInstallPrompt } from "../utils/pwa";
 // Types
 import { Tag } from "../types/tags";
 import { Strategy } from "../types/strategies";
-import { TradingAccount, BalanceOperation, VIOLATION_REASONS, ViolationReason, SetupQuality, WeeklyReview } from "../types";
+import { TradingAccount, BalanceOperation, VIOLATION_REASONS, ViolationReason, SetupQuality, WeeklyReview, Trade } from "../types";
 import { MT5AccountInfo } from "../utils/importPipeline";
 
 // Components
@@ -202,6 +202,7 @@ try {
 }
 
 /* ---------------- Types ---------------- */
+// Local types
 type Direction = "Long" | "Short";
 type Tier = { name: string; min: number; max: number; pairs: number; suggestedPairs: string; desc: string };
 type TaxBracket = { rate: number; label: string; minIncome: number };
@@ -256,27 +257,6 @@ type TradeInput = {
 };
 
 
-type Trade = {
-  id: string;
-  pair: string;
-  direction: Direction;
-  entry: number;
-  exit: number;
-  date: string;
-  time: string;
-  ts: number;
-  lots: number;
-  pnl: number;
-  setup: string;
-  emotion: string;
-  notes: string;
-  imageUrl?: string;
-  entryType?: EntryType;
-  // Violation Taxonomy fields
-  setupQuality?: SetupQuality;
-  violationReason?: ViolationReason;
-  sessionType?: 'London' | 'NewYork' | 'Tokyo' | 'Sydney' | 'Asian' | 'Overlap';
-};
 type GlobalSettings = {
   pipValue: number;
   stopLoss: number;
@@ -4519,6 +4499,7 @@ const RetailBeastApp: React.FC = () => {
             setBalanceInput(String(newAccount.startingBalance));
           }
         }}
+        onImportTrades={handleImportTrades}
         darkMode={darkMode}
       />
 

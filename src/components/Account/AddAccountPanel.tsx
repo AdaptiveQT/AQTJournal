@@ -13,7 +13,7 @@ import {
     ExternalLink,
     ChevronRight
 } from 'lucide-react';
-import { TradingAccount } from '../../types';
+import { TradingAccount, Trade } from '../../types';
 import MetaApiConnectModal from '../MetaApi/MetaApiConnectModal';
 import CTraderConnectModal from '../CTrader/CTraderConnectModal';
 
@@ -22,6 +22,7 @@ interface AddAccountPanelProps {
     onClose: () => void;
     onOpenImportWizard: () => void;
     onCreateManualAccount: (account: Partial<TradingAccount>) => void;
+    onImportTrades?: (trades: Trade[]) => void;
     darkMode?: boolean;
 }
 
@@ -86,6 +87,7 @@ const AddAccountPanel: React.FC<AddAccountPanelProps> = ({
     onClose,
     onOpenImportWizard,
     onCreateManualAccount,
+    onImportTrades,
     darkMode = true
 }) => {
     const [isDragging, setIsDragging] = useState(false);
@@ -152,7 +154,7 @@ const AddAccountPanel: React.FC<AddAccountPanelProps> = ({
         }
     };
 
-    const handleMetaApiConnected = (accountId: string, accountName: string) => {
+    const handleMetaApiConnected = async (accountId: string, accountName: string) => {
         setShowMetaApiModal(false);
         // Create account from MetaApi connection
         onCreateManualAccount({
@@ -162,6 +164,26 @@ const AddAccountPanel: React.FC<AddAccountPanelProps> = ({
             currency: 'USD',
             startingBalance: 0
         });
+
+        // Trigger Historical Sync
+        if (onImportTrades) {
+            try {
+                const res = await fetch('/api/metaapi/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accountId })
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.trades) {
+                        onImportTrades(data.trades);
+                    }
+                }
+            } catch (err) {
+                console.error('Auto-sync failed:', err);
+            }
+        }
+
         onClose();
     };
 

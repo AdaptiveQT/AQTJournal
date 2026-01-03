@@ -60,6 +60,7 @@ const COLUMN_PATTERNS: Record<keyof Trade, RegExp[]> = {
     mood: [/^mood$/i],
     accountId: [], // Not auto-mapped from imports, set programmatically
     entryType: [/^entry.?type$/i, /^entry.?style$/i], // Entry style categorization
+    source: [/^source$/i, /^origin$/i], // Trade source
 };
 
 /**

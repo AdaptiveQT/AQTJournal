@@ -1,5 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
+// @ts-ignore
+import MetaApi from 'metaapi.cloud-sdk';
 
 /**
  * MetaApi Trade History Sync API
@@ -10,21 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * Body: { accountId, startDate?, endDate? }
  */
 
-interface Trade {
-    id: string;
-    pair: string;
-    direction: 'Long' | 'Short';
-    entry: number;
-    exit: number;
-    pnl: number;
-    lots: number;
-    date: string;
-    time: string;
-    setup: string;
-    emotion: string;
-    notes: string;
-    source: string;
-}
+import { Trade } from '@/types';
 
 export async function POST(request: NextRequest) {
     try {
@@ -46,7 +33,6 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const MetaApi = (await import('metaapi.cloud-sdk')).default;
         const api = new MetaApi(metaApiToken);
 
         // Get account - use any to bypass SDK type issues
@@ -110,10 +96,12 @@ export async function POST(request: NextRequest) {
                 lots: entryDeal.volume,
                 date: tradeDate.toISOString().split('T')[0],
                 time: tradeDate.toTimeString().split(' ')[0].substring(0, 5),
+                ts: tradeDate.getTime(),
                 setup: 'Imported',
                 emotion: 'Neutral',
                 notes: `Imported from MT5. Position ID: ${positionId}`,
-                source: 'metaapi'
+                source: 'metaapi',
+                accountId: accountId
             });
         }
 
