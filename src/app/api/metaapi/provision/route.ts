@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-// @ts-ignore
-import MetaApi from 'metaapi.cloud-sdk';
+export const dynamic = 'force-dynamic';
 
 /**
  * MetaApi Account Provisioning API
@@ -14,6 +13,8 @@ import MetaApi from 'metaapi.cloud-sdk';
 
 export async function POST(request: NextRequest) {
     try {
+        // Dynamic import to prevent build-time "window is not defined" error
+        const { default: MetaApi } = await import('metaapi.cloud-sdk');
         const body = await request.json();
         const { name, login, password, server, platform = 'mt5' } = body;
 

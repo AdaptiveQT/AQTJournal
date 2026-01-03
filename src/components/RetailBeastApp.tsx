@@ -2098,6 +2098,28 @@ const RetailBeastApp: React.FC = () => {
   const [showAccountManager, setShowAccountManager] = useState(false);
   const [showAddAccountPanel, setShowAddAccountPanel] = useState(false);
   const [balanceOperations, setBalanceOperations] = useState<BalanceOperation[]>([]);
+  const [showMetaApiModal, setShowMetaApiModal] = useState(false);
+
+  const handleImportTrades = useCallback((newTrades: Trade[]) => {
+    // 1. Identify new trades (deduplicate by ID)
+    const existingIds = new Set(trades.map(t => t.id));
+    const uniqueTrades = newTrades.filter(t => !existingIds.has(t.id));
+
+    if (uniqueTrades.length === 0) return;
+
+    // 2. Add to state
+    setTrades(prev => [...prev, ...uniqueTrades]);
+
+    // 3. Persist (Firebase)
+    if (user && db) {
+      const batch = writeBatch(db);
+      uniqueTrades.forEach(trade => {
+        const tradeRef = doc(db, 'users', user.uid, 'trades', trade.id);
+        batch.set(tradeRef, trade);
+      });
+      batch.commit().catch(err => console.error('Error batch saving imported trades:', err));
+    }
+  }, [trades, user, db]);
 
   // Onboarding State (Protocol Modal → OnboardingProfile → Journal)
   const [protocolAccepted, setProtocolAccepted] = useState<boolean>(() => {
