@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
+// @ts-ignore
+import MetaApi from 'metaapi.cloud-sdk';
 
 /**
  * MetaApi Account Provisioning API
@@ -32,8 +34,8 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Dynamic import to avoid issues with server-side module
-        const MetaApi = (await import('metaapi.cloud-sdk')).default;
+
+
         const api = new MetaApi(metaApiToken);
 
         // Create account - use any to bypass SDK type issues
