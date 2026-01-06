@@ -37,6 +37,7 @@ export interface ParsedRow {
 const COLUMN_PATTERNS: Record<keyof Trade, RegExp[]> = {
     id: [/^id$/i, /^trade.?id$/i, /^ticket$/i, /^order$/i, /^position$/i, /^deal$/i],
     pair: [/^pair$/i, /^symbol$/i, /^instrument$/i, /^market$/i, /^currency$/i],
+    symbol: [/^symbol$/i, /^pair$/i, /^instrument$/i], // Alias for pair
     direction: [/^direction$/i, /^side$/i, /^type$/i, /^buy.?sell$/i, /^action$/i],
     entry: [/^entry$/i, /^open.?price$/i, /^entry.?price$/i, /^price$/i],
     exit: [/^exit$/i, /^close.?price$/i, /^exit.?price$/i, /^take.?profit$/i, /^closeprice$/i],
@@ -44,12 +45,15 @@ const COLUMN_PATTERNS: Record<keyof Trade, RegExp[]> = {
     time: [/^time$/i, /^open.?time$/i, /^trade.?time$/i],
     ts: [/^timestamp$/i, /^unix$/i, /^epoch$/i],
     lots: [/^lot/i, /^size$/i, /^volume$/i, /^qty$/i, /^quantity$/i, /^units$/i],
+    size: [/^size$/i, /^lot/i, /^volume$/i], // Alias for lots
     pnl: [/^pnl$/i, /^p&l$/i, /^profit$/i, /^net.?profit$/i, /^result$/i, /^gain$/i],
     setup: [/^setup$/i, /^strategy$/i, /^pattern$/i, /^playbook$/i],
     emotion: [/^emotion$/i, /^mood$/i, /^feeling$/i, /^mental$/i],
     notes: [/^note/i, /^comment/i, /^remark/i, /^description$/i],
     stopLoss: [/^stop/i, /^sl$/i, /^stop.?loss$/i, /^stoploss$/i],
     takeProfit: [/^take.?profit$/i, /^tp$/i, /^target$/i, /^takeprofit$/i],
+    sl: [/^sl$/i, /^stop.?loss$/i], // Numeric stop loss
+    tp: [/^tp$/i, /^take.?profit$/i], // Numeric take profit
     imageUrl: [/^image$/i, /^screenshot$/i, /^chart$/i],
     sessionType: [/^session$/i, /^market.?session$/i],
     tags: [/^tag/i, /^label/i, /^category$/i],
@@ -61,6 +65,8 @@ const COLUMN_PATTERNS: Record<keyof Trade, RegExp[]> = {
     accountId: [], // Not auto-mapped from imports, set programmatically
     entryType: [/^entry.?type$/i, /^entry.?style$/i], // Entry style categorization
     source: [/^source$/i, /^origin$/i], // Trade source
+    stopMoved: [], // Not auto-mapped, set manually
+    ruleViolation: [], // Not auto-mapped, set manually
 };
 
 /**

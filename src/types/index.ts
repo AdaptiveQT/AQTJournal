@@ -5,12 +5,14 @@
 export interface Trade {
     id: string;
     pair: string;
+    symbol?: string; // Alias for pair (used in some contexts)
     direction: 'Long' | 'Short';
     entry: number;
     exit: number;
     setup: string;
     emotion: string;
     lots: number;
+    size?: number; // Alias for lots (used in exports)
     pnl: number;
     date: string;
     ts: number;
@@ -18,6 +20,8 @@ export interface Trade {
     timestamp?: any;
     stopLoss?: string;
     takeProfit?: string;
+    sl?: number; // Stop loss price (numeric)
+    tp?: number; // Take profit price (numeric)
     riskRewardRatio?: number;
     notes?: string;
     accountId?: string; // Link to TradingAccount
@@ -30,7 +34,11 @@ export interface Trade {
     strategyId?: string; // ID of strategy used
     imageUrl?: string; // Trade screenshot
     entryType?: 'Breakout' | 'Pullback' | 'Reversal' | 'Fade'; // Entry style categorization
-    source?: string; // 'manual', 'metaapi', 'csv'
+    source?: string; // 'manual', 'metaapi', 'csv', 'ctrader'
+
+    // Gamification fields
+    stopMoved?: boolean; // True if stop loss was moved during trade
+    ruleViolation?: string; // Type of rule violation if any
 }
 
 /**
