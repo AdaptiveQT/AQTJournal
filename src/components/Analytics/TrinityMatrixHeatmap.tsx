@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Grid3X3, Target, TrendingUp, AlertTriangle, Star } from 'lucide-react';
+import { Grid3X3, AlertTriangle, Star } from 'lucide-react';
 import { Trade } from '../../types';
-import { getSessionFromTrade, expectancyBySetup } from '../../utils/analyticsEngine';
+import { getSessionFromTrade } from '../../utils/analyticsEngine';
 
 interface TrinityMatrixHeatmapProps {
     trades: Trade[];
@@ -103,7 +103,7 @@ const TrinityMatrixHeatmap: React.FC<TrinityMatrixHeatmapProps> = ({
         });
 
         // Session and setup totals
-        const sessionTotals: Record<Session, MatrixCell> = {} as any;
+        const sessionTotals: Record<Session, MatrixCell> = {} as Record<Session, MatrixCell>;
         const setupTotals: Record<string, MatrixCell> = {};
 
         SESSIONS.forEach(session => {

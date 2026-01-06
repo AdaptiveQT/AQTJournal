@@ -372,3 +372,227 @@ export function calculateSummary(trades: Trade[], baseRisk: number = 10): Analyt
         sharpeRatio
     };
 }
+
+// ============= RISK OF RUIN =============
+
+/**
+ * Calculates Risk of Ruin using simplified formula
+ * RoR = ((1 - edge) / (1 + edge)) ^ units
+ * where edge = (p × W) - ((1-p) × L) normalized
+ * 
+ * @param winRate - Win probability (0-1)
+ * @param avgWinR - Average win in R-multiples
+ * @param avgLossR - Average loss in R-multiples (positive value)
+ * @param capitalUnits - Account in risk units (e.g., 100 if risking 1%)
+ * @returns Risk of Ruin percentage (0-100)
+ */
+export function calculateRiskOfRuin(
+    winRate: number,
+    avgWinR: number,
+    avgLossR: number,
+    capitalUnits: number = 100
+): number {
+    // Edge calculation
+    const edge = (winRate * avgWinR) - ((1 - winRate) * avgLossR);
+
+    // If edge is negative or zero, ruin is certain
+    if (edge <= 0) return 100;
+
+    // Simplified Risk of Ruin formula
+    // RoR = ((1 - A) / (1 + A))^n where A = edge/avgLoss, n = capital units
+    const A = edge / Math.max(avgLossR, 0.01);
+
+    if (A >= 1) return 0; // Impossible to go broke with such edge
+
+    const rorFactor = (1 - A) / (1 + A);
+    const riskOfRuin = Math.pow(rorFactor, capitalUnits) * 100;
+
+    return Math.min(100, Math.max(0, riskOfRuin));
+}
+
+/**
+ * Simplified Risk of Ruin using empirical Kelly formula
+ */
+export function riskOfRuinKelly(
+    winRate: number,
+    avgWinR: number,
+    avgLossR: number
+): { ror: number; kellyFraction: number; halfKelly: number } {
+    // Kelly Criterion: f* = (p × b - q) / b
+    // where b = avgWin/avgLoss, p = win rate, q = 1 - p
+    const b = avgLossR > 0 ? avgWinR / avgLossR : 1;
+    const p = winRate;
+    const q = 1 - winRate;
+
+    const kelly = (p * b - q) / b;
+    const halfKelly = kelly / 2;
+
+    // Approximate RoR at full Kelly
+    // RoR ≈ 13.5% at full Kelly, 1.8% at half Kelly
+    let ror = 0;
+    if (kelly <= 0) {
+        ror = 100;
+    } else if (kelly >= 0.25) {
+        ror = 0.1; // Extremely strong edge
+    } else {
+        // Interpolate RoR based on Kelly fraction
+        ror = Math.exp(-15 * kelly) * 100;
+    }
+
+    return {
+        ror: Math.min(100, Math.max(0, ror)),
+        kellyFraction: Math.max(0, kelly),
+        halfKelly: Math.max(0, halfKelly)
+    };
+}
+
+// ============= EXPECTANCY PROJECTIONS =============
+
+export interface ExpectancyProjection {
+    trades: number;
+    expectedR: number;
+    p10: number;    // 10th percentile (pessimistic)
+    p50: number;    // Median
+    p90: number;    // 90th percentile (optimistic)
+}
+
+/**
+ * Projects expected R-multiple returns over N trades
+ * Uses Central Limit Theorem for confidence intervals
+ */
+export function projectExpectancy(
+    expectancy: number,
+    stdDevR: number,
+    tradeCount: number = 100
+): ExpectancyProjection[] {
+    const projections: ExpectancyProjection[] = [];
+    const milestones = [10, 25, 50, 100, 250, 500];
+
+    milestones.forEach(n => {
+        if (n > tradeCount * 10) return; // Don't project too far
+
+        const expectedR = expectancy * n;
+        const stdErr = stdDevR * Math.sqrt(n);
+
+        projections.push({
+            trades: n,
+            expectedR,
+            p10: expectedR - 1.28 * stdErr,  // 10th percentile
+            p50: expectedR,                   // Median = Expected
+            p90: expectedR + 1.28 * stdErr    // 90th percentile
+        });
+    });
+
+    return projections;
+}
+
+// ============= EQUITY CURVE PROJECTION =============
+
+export interface EquityCurvePoint {
+    trade: number;
+    equity: number;       // Current equity
+    drawdown: number;     // Current drawdown %
+    maxDrawdown: number;  // Max drawdown to this point
+}
+
+/**
+ * Simulates equity curve from historical trades
+ * Returns actual curve plus drawdown metrics
+ */
+export function generateEquityCurve(
+    trades: Trade[],
+    startingBalance: number = 10000
+): EquityCurvePoint[] {
+    if (trades.length === 0) return [];
+
+    // Sort by date
+    const sorted = [...trades].sort((a, b) => {
+        if (a.ts && b.ts) return a.ts - b.ts;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+    let equity = startingBalance;
+    let peak = startingBalance;
+    let maxDrawdown = 0;
+
+    const curve: EquityCurvePoint[] = [{
+        trade: 0,
+        equity: startingBalance,
+        drawdown: 0,
+        maxDrawdown: 0
+    }];
+
+    sorted.forEach((trade, i) => {
+        equity += trade.pnl;
+
+        // Update peak
+        if (equity > peak) {
+            peak = equity;
+        }
+
+        // Calculate current drawdown
+        const drawdown = peak > 0 ? ((peak - equity) / peak) * 100 : 0;
+        maxDrawdown = Math.max(maxDrawdown, drawdown);
+
+        curve.push({
+            trade: i + 1,
+            equity,
+            drawdown,
+            maxDrawdown
+        });
+    });
+
+    return curve;
+}
+
+/**
+ * Monte Carlo equity projection
+ * Simulates future equity paths based on historical trade distribution
+ */
+export function monteCarloEquity(
+    trades: Trade[],
+    startingBalance: number = 10000,
+    futureTradeCount: number = 100,
+    simulations: number = 1000
+): { p10: number[]; p50: number[]; p90: number[]; mean: number[] } {
+    if (trades.length < 10) {
+        return { p10: [], p50: [], p90: [], mean: [] };
+    }
+
+    const pnlValues = trades.map(t => t.pnl);
+
+    // Run simulations
+    const allPaths: number[][] = [];
+
+    for (let sim = 0; sim < simulations; sim++) {
+        let equity = startingBalance;
+        const path: number[] = [equity];
+
+        for (let i = 0; i < futureTradeCount; i++) {
+            // Random sample from historical PnL
+            const randomIdx = Math.floor(Math.random() * pnlValues.length);
+            equity += pnlValues[randomIdx];
+            path.push(equity);
+        }
+
+        allPaths.push(path);
+    }
+
+    // Calculate percentiles at each point
+    const p10: number[] = [];
+    const p50: number[] = [];
+    const p90: number[] = [];
+    const mean: number[] = [];
+
+    for (let i = 0; i <= futureTradeCount; i++) {
+        const valuesAtPoint = allPaths.map(path => path[i]).sort((a, b) => a - b);
+
+        p10.push(valuesAtPoint[Math.floor(simulations * 0.10)]);
+        p50.push(valuesAtPoint[Math.floor(simulations * 0.50)]);
+        p90.push(valuesAtPoint[Math.floor(simulations * 0.90)]);
+        mean.push(valuesAtPoint.reduce((a, b) => a + b, 0) / simulations);
+    }
+
+    return { p10, p50, p90, mean };
+}
+
