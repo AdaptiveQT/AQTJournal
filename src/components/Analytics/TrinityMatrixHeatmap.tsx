@@ -39,9 +39,9 @@ const TrinityMatrixHeatmap: React.FC<TrinityMatrixHeatmapProps> = ({
                 setupSet.add(t.setup);
             }
         });
-        // Default setups if none found
+        // Default setups if none found (SMC-Quant presets)
         if (setupSet.size === 0) {
-            return ['OB Demand', 'FVG', 'MSS', 'Silver Bullet'];
+            return ['Liquidity Sweep + OTE', 'FVG Retracement', 'Order Block Demand', 'Silver Bullet'];
         }
         return Array.from(setupSet).slice(0, 6); // Max 6 for display
     }, [trades]);

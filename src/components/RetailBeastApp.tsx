@@ -219,10 +219,29 @@ type BrokerInfo = {
 };
 type BrokerMap = Record<string, BrokerInfo>;
 
-// Simplified universal setups + Custom option
+// SMC-Quant Hybrid Strategy Presets (2026)
+// Based on 6-pillar institutional framework:
+// Pillar I: ADX Gate | Pillar II: SMA Alignment | Pillar III: SMC Precision
 const TRADE_SETUPS = [
-  "Breakout", "Pullback", "Reversal", "Trend",
-  "Range", "Scalp", "News", "Other"
+  // === SMC-Quant Institutional ===
+  "Liquidity Sweep + OTE",    // Sweep → ChoCh → OB/FVG → 62-79% fib
+  "ADX Gate Breakout",        // ADX > 25 + SMA aligned trend entry
+  "FVG Retracement",          // Fair Value Gap with EMA confluence
+  "Order Block Demand",       // Bullish OB with trend confirmation
+  "Order Block Supply",       // Bearish OB with trend confirmation
+  "Silver Bullet",            // 10-11 AM / 2-3 PM EST ICT model
+  "MSS Reversal",             // Market Structure Shift at extremes
+  "ATR Pyramid Add",          // ADX > 30 scale-in on 1:1 hit
+
+  // === Classic Setups ===
+  "Breakout",
+  "Pullback",
+  "Reversal",
+  "Trend Continuation",
+  "Range Fade",
+
+  // === Custom ===
+  "Other"
 ] as const;
 
 // Entry type categorization for analytics
