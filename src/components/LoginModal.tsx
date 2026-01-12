@@ -1,13 +1,14 @@
 import React from 'react';
-import { X, Twitter, Facebook, Mail } from 'lucide-react';
+import { X, Twitter, Facebook, WifiOff } from 'lucide-react';
 
 interface LoginModalProps {
     isOpen: boolean;
     onClose: () => void;
     onLoginRaw: (provider: 'google' | 'twitter' | 'facebook') => void;
+    onContinueOffline?: () => void;
 }
 
-const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginRaw }) => {
+const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginRaw, onContinueOffline }) => {
     if (!isOpen) return null;
 
     return (
@@ -17,7 +18,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginRaw }) 
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                        Welcome Back
+                        Welcome to RetailBeastFX
                     </h2>
                     <button
                         onClick={onClose}
@@ -78,6 +79,19 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginRaw }) 
                     </button>
                 </div>
 
+                {/* Continue Offline Option */}
+                {onContinueOffline && (
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                        <button
+                            onClick={onContinueOffline}
+                            className="w-full flex items-center justify-center gap-2 p-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                        >
+                            <WifiOff size={16} />
+                            Continue Offline (data stays on this device)
+                        </button>
+                    </div>
+                )}
+
                 <p className="text-xs text-center text-slate-500 dark:text-slate-500 mt-4">
                     By signing in, you agree to our Terms of Service and Privacy Policy.
                 </p>
@@ -87,3 +101,4 @@ const LoginModal: React.FC<LoginModalProps> = ({ isOpen, onClose, onLoginRaw }) 
 };
 
 export default LoginModal;
+

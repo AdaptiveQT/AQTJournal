@@ -2271,28 +2271,55 @@ const RetailBeastApp: React.FC = () => {
       setIsLoading(false); // Local mode – no cloud sync
       return;
     }
-    const initAuth = async () => {
-      try {
-        const token = process.env.NEXT_PUBLIC_FIREBASE_CUSTOM_TOKEN;
-        if (token) await signInWithCustomToken(auth, token);
-        else await signInAnonymously(auth);
-      } catch (e) {
-        console.warn("[RetailBeastFX] Auth failed; staying in Local Mode:", e);
+    // Check if user explicitly logged out - don't auto-login
+    const hasLoggedOut = localStorage.getItem('rbfx_logged_out') === 'true';
+    if (hasLoggedOut) {
+      setIsLoading(false);
+      // Show login modal for logged-out users
+      setShowLoginModal(true);
+    }
+    const unsub = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+      // Show login modal if user is null and hasn't explicitly logged out to work offline
+      if (!u && !hasLoggedOut) {
+        setShowLoginModal(true);
       }
-    };
-    initAuth();
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    });
     return () => unsub();
   }, []);
 
-  // Sync Trades from Firebase
+  // Sync Trades from Firebase OR load from localStorage
   useEffect(() => {
+    // First, try to load from localStorage as fallback
+    if (typeof window !== 'undefined') {
+      try {
+        const savedTrades = localStorage.getItem('rbfx_trades');
+        if (savedTrades) {
+          const localTrades = JSON.parse(savedTrades) as Trade[];
+          if (localTrades.length > 0 && trades.length === 0) {
+            setTrades(localTrades);
+          }
+        }
+      } catch (e) {
+        console.warn('[RetailBeastFX] Failed to load trades from localStorage:', e);
+      }
+    }
+
+    // If Firebase is available and user is logged in, sync from there
     if (!firebaseReady || !db || !user) return;
     const tradesCol = collection(db, "artifacts", APP_ID, "users", user.uid, "trades");
     const unsubscribe = onSnapshot(tradesCol, (snapshot) => {
       const remoteTrades = snapshot.docs.map(doc => doc.data() as Trade);
       remoteTrades.sort((a, b) => b.ts - a.ts);
       setTrades(remoteTrades);
+      // Also save to localStorage as backup
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('rbfx_trades', JSON.stringify(remoteTrades));
+        } catch (e) {
+          console.warn('[RetailBeastFX] Failed to save trades to localStorage:', e);
+        }
+      }
     });
     return () => unsubscribe();
   }, [user]);
@@ -2674,10 +2701,18 @@ const RetailBeastApp: React.FC = () => {
       return;
     }
     try {
+      localStorage.removeItem('rbfx_logged_out');
       await signInAnonymously(auth);
+      setShowLoginModal(false);
     } catch (err: unknown) {
       console.error("Anonymous sign-in failed:", err);
     }
+  };
+
+  // Continue offline without any Firebase auth
+  const continueOffline = () => {
+    localStorage.setItem('rbfx_logged_out', 'true');
+    setShowLoginModal(false);
   };
 
   const signInWithGoogle = async () => {
@@ -2688,6 +2723,7 @@ const RetailBeastApp: React.FC = () => {
       return;
     }
     try {
+      localStorage.removeItem('rbfx_logged_out');
       // If user is anonymous, link the account to preserve data
       if (user?.isAnonymous) {
         await linkWithPopup(user, googleProvider);
@@ -2761,6 +2797,7 @@ const RetailBeastApp: React.FC = () => {
       return;
     }
     try {
+      localStorage.removeItem('rbfx_logged_out');
       // If user is anonymous, link the account to preserve data
       if (user?.isAnonymous) {
         await linkWithPopup(user, twitterProvider);
@@ -2800,6 +2837,7 @@ const RetailBeastApp: React.FC = () => {
   const signOutAll = async () => {
     if (!auth) return;
     try {
+      localStorage.setItem('rbfx_logged_out', 'true');
       await signOut(auth);
     } catch (e: any) {
       if (typeof window !== "undefined") {
@@ -2817,13 +2855,23 @@ const RetailBeastApp: React.FC = () => {
     const finalTrade = { ...normalized, pnl: pnlValue };
 
     // Optimistic Update
-    setTrades(prev => [finalTrade, ...prev]);
+    const updatedTrades = [finalTrade, ...trades];
+    setTrades(updatedTrades);
     setBalance(prev => round2(prev + pnlValue));
     setBalanceInput(String(round2(balance + pnlValue)));
 
     // XP Reward for First Trade
     if (trades.length === 0) {
       setXpReward({ amount: 500, message: "First Blood! Welcome to the Arena." });
+    }
+
+    // Always save to localStorage as backup/offline storage
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('rbfx_trades', JSON.stringify(updatedTrades));
+      } catch (e) {
+        console.warn('[RetailBeastFX] Failed to save trades to localStorage:', e);
+      }
     }
 
     // Persist to Firestore if available
@@ -2835,7 +2883,7 @@ const RetailBeastApp: React.FC = () => {
       }
     }
     setNewTrade(initialTradeState);
-  }, [isFormValid, user, newTrade, pipValueForLotEffective, effectiveLots, balance, initialTradeState, broker]);
+  }, [isFormValid, user, newTrade, pipValueForLotEffective, effectiveLots, balance, trades, initialTradeState, broker]);
 
   const deleteTrade = useCallback(async (id: string, skipConfirm = false) => {
     const trade = trades.find((t) => t.id === id);
@@ -4619,6 +4667,7 @@ const RetailBeastApp: React.FC = () => {
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onLoginRaw={handleLoginRaw}
+        onContinueOffline={continueOffline}
       />
     </div>
   );
