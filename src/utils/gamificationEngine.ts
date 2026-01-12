@@ -21,7 +21,8 @@ export interface UserLevel {
 
 export interface XPEvent {
     type: 'trade_logged' | 'stop_respected' | 'streak_day' | 'rule_followed' |
-    'violation' | 'daily_review' | 'weekly_review' | 'perfect_week';
+    'violation' | 'daily_review' | 'weekly_review' | 'perfect_week' |
+    'withdrawal_executed' | 'daily_limit_breach';  // New small account events
     xp: number;
     description: string;
     timestamp: number;
@@ -85,6 +86,13 @@ export const ACHIEVEMENTS: Achievement[] = [
     { id: 'positive_expectancy', title: 'Edge Found', description: 'Achieve positive expectancy', icon: '📈' },
     { id: 'level_5', title: 'Beast Mode', description: 'Reach level 5', icon: '🦁' },
     { id: 'level_10', title: 'Apex', description: 'Reach max level', icon: '🏆' },
+
+    // === SMALL ACCOUNT / WITHDRAWAL ACHIEVEMENTS ===
+    { id: 'first_withdrawal', title: 'Cashed Out', description: 'Execute your first withdrawal', icon: '💵' },
+    { id: 'withdrawal_goal', title: 'Goal Getter', description: 'Hit your $100 withdrawal target', icon: '🎯' },
+    { id: 'triple_withdrawal', title: 'Serial Withdrawer', description: 'Complete 3 withdrawals', icon: '🏧' },
+    { id: 'daily_discipline', title: 'Under Control', description: '7 days staying under 3 trades/day', icon: '⏱️' },
+    { id: 'real_profit', title: 'Net Positive', description: 'Withdraw more than you deposited', icon: '💰' },
 ];
 
 // ============= XP CALCULATIONS =============
@@ -102,12 +110,18 @@ export const XP_REWARDS = {
     PERFECT_DAY: 20,            // No violations
     PERFECT_WEEK: 100,          // 7 perfect days
 
+    // === SMALL ACCOUNT / HIGH LEVERAGE REWARDS ===
+    WITHDRAWAL_EXECUTED: 200,   // BIG bonus for taking money out!
+    WITHDRAWAL_GOAL_MET: 100,   // Hit your $100 target
+    STAYED_UNDER_DAILY_LIMIT: 25, // Traded 3 or fewer times
+
     // Penalties (negative)
     VIOLATION_STOP_MOVED: -25,  // Moved stop loss
     VIOLATION_OVERTRADED: -15,  // Too many trades
     VIOLATION_OVERSIZED: -20,   // Position too large
     VIOLATION_REVENGE: -30,     // Revenge trade detected
     VIOLATION_FOMO: -20,        // FOMO entry
+    VIOLATION_DAILY_LIMIT: -50, // Breached 3-trade daily limit (harsh!)
 };
 
 /**

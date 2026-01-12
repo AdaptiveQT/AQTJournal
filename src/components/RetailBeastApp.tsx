@@ -219,28 +219,40 @@ type BrokerInfo = {
 };
 type BrokerMap = Record<string, BrokerInfo>;
 
-// SMC-Quant Hybrid Strategy Presets (2026)
-// Based on 6-pillar institutional framework:
-// Pillar I: ADX Gate | Pillar II: SMA Alignment | Pillar III: SMC Precision
+// Universal Trade Setups - Works for any FX strategy
+// Organized by trading style for easy categorization
 const TRADE_SETUPS = [
-  // === SMC-Quant Institutional ===
-  "Liquidity Sweep + OTE",    // Sweep → ChoCh → OB/FVG → 62-79% fib
-  "ADX Gate Breakout",        // ADX > 25 + SMA aligned trend entry
-  "FVG Retracement",          // Fair Value Gap with EMA confluence
-  "Order Block Demand",       // Bullish OB with trend confirmation
-  "Order Block Supply",       // Bearish OB with trend confirmation
-  "Silver Bullet",            // 10-11 AM / 2-3 PM EST ICT model
-  "MSS Reversal",             // Market Structure Shift at extremes
-  "ATR Pyramid Add",          // ADX > 30 scale-in on 1:1 hit
+  // === TREND FOLLOWING ===
+  "Trend Continuation",       // With-trend entry after pullback
+  "Momentum Entry",           // Strong directional move
+  "Moving Average Cross",     // MA-based trend signal
+  "Higher High / Lower Low",  // Price action trend following
 
-  // === Classic Setups ===
-  "Breakout",
-  "Pullback",
-  "Reversal",
-  "Trend Continuation",
-  "Range Fade",
+  // === MEAN REVERSION ===
+  "Support Bounce",           // Long at support
+  "Resistance Rejection",     // Short at resistance
+  "Range Fade",               // Counter-trend at range extremes
+  "Oversold/Overbought",      // Indicator-based reversal
 
-  // === Custom ===
+  // === BREAKOUT ===
+  "Breakout",                 // Breaking key level
+  "Retest Entry",             // Entry on breakout retest
+  "News Breakout",            // High-impact news move
+
+  // === SMART MONEY / ICT ===
+  "Order Block",              // OB entry (supply/demand)
+  "Fair Value Gap",           // FVG fill entry
+  "Liquidity Sweep",          // Stop hunt reversal
+  "Market Structure Shift",   // ChoCh / BOS entry
+
+  // === SCALPING ===
+  "Quick Scalp",              // Fast in/out trade
+  "Session Open",             // London/NY open momentum
+
+  // === OTHER ===
+  "Pullback",                 // Generic pullback entry
+  "Reversal",                 // Counter-trend trade
+  "Custom",                   // User-defined setup
   "Other"
 ] as const;
 

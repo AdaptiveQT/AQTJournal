@@ -2,44 +2,55 @@
  * Shared TypeScript types for RetailBeastFX Journal
  */
 
+/**
+ * CANONICAL Trade Object
+ * Single executed position with immutable timestamps
+ */
 export interface Trade {
+    // === IMMUTABLE CORE ===
     id: string;
-    pair: string;
-    symbol?: string; // Alias for pair (used in some contexts)
+    pair: string;                    // Canonical symbol name
     direction: 'Long' | 'Short';
     entry: number;
     exit: number;
-    setup: string;
-    emotion: string;
     lots: number;
-    size?: number; // Alias for lots (used in exports)
     pnl: number;
-    date: string;
-    ts: number;
-    time?: string; // HH:MM format
-    timestamp?: any;
-    stopLoss?: string;
-    takeProfit?: string;
-    sl?: number; // Stop loss price (numeric)
-    tp?: number; // Take profit price (numeric)
+    date: string;                    // YYYY-MM-DD
+    ts: number;                      // Unix timestamp (immutable)
+
+    // === RISK (numeric only) ===
+    sl?: number;                     // Stop loss price
+    tp?: number;                     // Take profit price
     riskRewardRatio?: number;
+
+    // === CONTEXT ===
+    setup: string;
+    sessionType?: SessionType;
+    entryType?: EntryType;
+    mood?: MoodType;                 // Single emotion field
+    accountId?: string;
+    source?: 'manual' | 'metaapi' | 'csv' | 'ctrader';
+    tags?: string[];
+    strategyId?: string;
+
+    // === NOTES (single field) ===
     notes?: string;
-    accountId?: string; // Link to TradingAccount
+    imageUrl?: string;
+    voiceNoteUrl?: string;
 
-    // Phase 1 Enhancements
-    tags?: string[]; // Array of tag IDs
-    voiceNoteUrl?: string; // URL to Firebase Storage voice recording
-    mood?: 'confident' | 'fearful' | 'neutral' | 'greedy' | 'disciplined' | 'anxious' | 'calm';
-    sessionType?: 'London' | 'NewYork' | 'Tokyo' | 'Sydney' | 'Asian' | 'Overlap';
-    strategyId?: string; // ID of strategy used
-    imageUrl?: string; // Trade screenshot
-    entryType?: 'Breakout' | 'Pullback' | 'Reversal' | 'Fade'; // Entry style categorization
-    source?: string; // 'manual', 'metaapi', 'csv', 'ctrader'
+    // === ENFORCEMENT ===
+    ruleViolation?: ViolationReason;
+    stopMoved?: boolean;
+    submission?: TradeSubmission;
 
-    // Gamification fields
-    stopMoved?: boolean; // True if stop loss was moved during trade
-    ruleViolation?: string; // Type of rule violation if any
+    // === COSTS ===
+    transactionFee?: number;
 }
+
+// Canonical type definitions
+export type SessionType = 'London' | 'NewYork' | 'Tokyo' | 'Sydney' | 'Frankfurt' | 'London-NY Overlap' | 'Asian' | 'Off-Hours' | 'News Event';
+export type EntryType = 'Breakout' | 'Pullback' | 'Reversal' | 'Fade' | 'Momentum' | 'Scalp' | 'Swing' | 'Position';
+export type MoodType = 'confident' | 'fearful' | 'neutral' | 'greedy' | 'disciplined' | 'anxious' | 'calm';
 
 /**
  * Trading Account from MT5/MT4 report or manual entry
@@ -165,18 +176,31 @@ export interface KeyboardShortcut {
     action: () => void;
 }
 
-// Violation Taxonomy - for non-Trinity trades
+// Violation Taxonomy - Universal (works for any strategy)
 export const VIOLATION_REASONS = [
-    'No Fresh OB',
-    'No BB Touch',
-    'EMA Mismatch',
-    'Outside Killzone',
-    'No Stop Loss',
-    'Revenge / FOMO',
-    'Indicator-Induced Trade'
+    // === RISK MANAGEMENT ===
+    'No Stop Loss',           // Universal: Every strategy should have stops
+    'Stop Moved',             // Universal: Moving SL against the trade
+    'Overleveraged',          // Universal: Position too large for account
+
+    // === ENTRY DISCIPLINE ===
+    'No Setup',               // Universal: Traded without valid entry criteria
+    'Outside Trading Hours',  // Universal: Traded outside your preferred session
+    'Chasing Entry',          // Universal: Entered late after move started
+
+    // === PSYCHOLOGY ===
+    'Revenge / FOMO',         // Universal: Emotional trading
+    'Overtrading',            // Universal: Too many trades
+    'Ignored Rules',          // Universal: Broke your own strategy rules
+
+    // === SMALL ACCOUNT DISCIPLINE ===
+    'Daily Limit Breach',     // Trading more than max trades per day
+    'Withdrawal Goal Ignored' // Not withdrawing when target reached
 ] as const;
 export type ViolationReason = typeof VIOLATION_REASONS[number];
-export type SetupQuality = 'TRINITY' | 'STANDARD' | 'IMPULSE';
+
+// Setup Quality - Generic categories
+export type SetupQuality = 'A+' | 'A' | 'B' | 'C' | 'IMPULSE';
 
 // Weekly Review Gate
 export interface WeeklyReview {
@@ -187,3 +211,51 @@ export interface WeeklyReview {
     fixForNextWeek: string;
     timestamp: number;
 }
+
+// ============= BEHAVIOR ENFORCEMENT TYPES =============
+
+/**
+ * User-defined trading rule (framework-agnostic)
+ */
+export interface UserRule {
+    id: string;
+    category: 'entry' | 'risk' | 'session' | 'exit';
+    description: string;  // e.g., "Entry requires trend alignment"
+    required: boolean;    // Must be checked for trade to proceed
+    createdAt: number;
+}
+
+/**
+ * Trade lock state (cooldown, session lock, etc.)
+ */
+export interface TradeLock {
+    type: 'cooldown' | 'session' | 'review' | 'violations' | 'daily_limit';
+    reason: string;       // Clinical explanation
+    expiresAt: number;    // Unix timestamp when lock expires (0 = manual unlock)
+    sessionType?: string; // Which session is locked
+    createdAt: number;
+}
+
+/**
+ * Trade submission with eligibility tracking
+ */
+export interface TradeSubmission {
+    rulesChecked: string[];      // IDs of rules user confirmed
+    allRulesMet: boolean;
+    eligibilityConfirmed: boolean;
+    submittedAt: number;
+    editLockedAt: number;        // 30 min after entry (truth machine)
+    isAmended?: boolean;         // Flagged if edited after lock
+    amendedAt?: number;
+}
+
+/**
+ * Default rules for new users (universal)
+ */
+export const DEFAULT_RULES: Omit<UserRule, 'id' | 'createdAt'>[] = [
+    { category: 'entry', description: 'Setup confirmation present', required: true },
+    { category: 'entry', description: 'Trend/bias aligned', required: true },
+    { category: 'risk', description: 'Stop loss defined', required: true },
+    { category: 'risk', description: 'Position size within limits', required: true },
+    { category: 'session', description: 'Trading during planned hours', required: false },
+];
