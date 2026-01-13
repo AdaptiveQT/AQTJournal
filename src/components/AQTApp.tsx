@@ -1958,6 +1958,10 @@ const AQTApp: React.FC = () => {
   // Sorting State
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'ts', direction: 'desc' });
 
+  // Bulk Edit State
+  const [selectedTradeIds, setSelectedTradeIds] = useState<Set<string>>(new Set());
+  const [bulkSetup, setBulkSetup] = useState<string>('OB');
+
   // Undo Stack for deleted trades
   const [undoStack, setUndoStack] = useState<{ trade: Trade; originalBalance: number; timeoutId?: NodeJS.Timeout }[]>([]);
   const [showUndoToast, setShowUndoToast] = useState<{ visible: boolean; tradePair?: string }>({ visible: false });
@@ -3393,6 +3397,47 @@ const AQTApp: React.FC = () => {
             </div>
           </div>
 
+          {/* Bulk Action Bar - shows when trades are selected */}
+          {selectedTradeIds.size > 0 && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                  {selectedTradeIds.size} trade{selectedTradeIds.size > 1 ? 's' : ''} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-blue-600 dark:text-blue-400">Set Setup:</label>
+                  <select
+                    value={bulkSetup}
+                    onChange={(e) => setBulkSetup(e.target.value)}
+                    className="px-3 py-1.5 rounded border border-blue-300 dark:border-blue-700 bg-white dark:bg-slate-800 text-sm"
+                    title="Select setup to apply"
+                  >
+                    {TRADE_SETUPS.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <button
+                    onClick={() => {
+                      // Apply bulk setup to all selected trades
+                      const updatedTrades = trades.map(t =>
+                        selectedTradeIds.has(t.id) ? { ...t, setup: bulkSetup } : t
+                      );
+                      setTrades(updatedTrades);
+                      setSelectedTradeIds(new Set());
+                    }}
+                    className="px-4 py-1.5 bg-blue-600 text-white rounded text-sm font-bold hover:bg-blue-700 transition-colors"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedTradeIds(new Set())}
+                className="text-blue-500 hover:text-blue-700 text-sm"
+              >
+                Clear Selection
+              </button>
+            </div>
+          )}
+
           {/* Use VirtualizedTradeTable for large journals (100+ trades) */}
           {trades.length >= 100 ? (
             <div>
@@ -3413,6 +3458,21 @@ const AQTApp: React.FC = () => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-blue-600 dark:text-blue-300 border-b border-slate-200 dark:border-white/10">
+                    <th scope="col" className="pb-3 pl-2 w-8">
+                      <input
+                        type="checkbox"
+                        checked={filteredTrades.length > 0 && filteredTrades.every(t => selectedTradeIds.has(t.id))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedTradeIds(new Set(filteredTrades.map(t => t.id)));
+                          } else {
+                            setSelectedTradeIds(new Set());
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-slate-300 dark:border-white/20 accent-blue-600"
+                        title="Select all trades"
+                      />
+                    </th>
                     <th scope="col" className="pb-3 pl-2 hidden sm:table-cell cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('ts')}>
                       <div className="flex items-center gap-1">Time {sortConfig?.key === 'ts' && (sortConfig.direction === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                     </th>
@@ -3473,7 +3533,23 @@ const AQTApp: React.FC = () => {
                     </tr>
                   ) : (
                     filteredTrades.map((t) => (
-                      <tr key={t.id} className="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5">
+                      <tr key={t.id} className={`border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 ${selectedTradeIds.has(t.id) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+                        <td className="py-3 pl-2 w-8">
+                          <input
+                            type="checkbox"
+                            checked={selectedTradeIds.has(t.id)}
+                            onChange={(e) => {
+                              const newSet = new Set(selectedTradeIds);
+                              if (e.target.checked) {
+                                newSet.add(t.id);
+                              } else {
+                                newSet.delete(t.id);
+                              }
+                              setSelectedTradeIds(newSet);
+                            }}
+                            className="w-4 h-4 rounded border-slate-300 dark:border-white/20 accent-blue-600"
+                          />
+                        </td>
                         <td className="py-3 pl-2 text-slate-600 dark:text-white hidden sm:table-cell">{t.date} <span className="text-xs text-slate-400">{t.time}</span></td>
                         <td className="py-3 font-bold text-slate-800 dark:text-white">{t.pair}</td>
                         <td className="py-3"><span className={`px-2 py-0.5 rounded text-xs ${t.direction === "Long" ? "bg-green-100 text-green-700 dark:text-green-300 dark:bg-green-900/50" : "bg-red-100 text-red-700 dark:text-red-300 dark:bg-red-900/50"}`}>{t.direction}</span></td>
