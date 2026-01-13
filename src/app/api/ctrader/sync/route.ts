@@ -218,10 +218,8 @@ async function fetchCTraderDeals(params: {
             pnl: Math.round(totalPnL * 100) / 100,
             lots: Math.round(lots * 100) / 100,
             date: tradeDate.toISOString().split('T')[0],
-            time: tradeDate.toTimeString().split(' ')[0].substring(0, 5),
             ts: tradeDate.getTime(),
             setup: 'Imported',
-            emotion: 'Neutral',
             notes: `Imported from CTrader. Position ID: ${positionId}`,
             source: 'ctrader',
             accountId: accountId

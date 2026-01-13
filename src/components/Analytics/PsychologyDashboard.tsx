@@ -54,7 +54,7 @@ const PsychologyDashboard: React.FC<PsychologyDashboardProps> = ({
         const byEmotion = new Map<string, Trade[]>();
 
         trades.forEach(trade => {
-            const emotion = trade.emotion || 'Neutral';
+            const emotion = trade.mood || 'Neutral';
             if (!byEmotion.has(emotion)) {
                 byEmotion.set(emotion, []);
             }

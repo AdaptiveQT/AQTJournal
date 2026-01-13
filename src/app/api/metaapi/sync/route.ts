@@ -96,10 +96,8 @@ export async function POST(request: NextRequest) {
                 pnl: Math.round(totalPnL * 100) / 100,
                 lots: entryDeal.volume,
                 date: tradeDate.toISOString().split('T')[0],
-                time: tradeDate.toTimeString().split(' ')[0].substring(0, 5),
                 ts: tradeDate.getTime(),
                 setup: 'Imported',
-                emotion: 'Neutral',
                 notes: `Imported from MT5. Position ID: ${positionId}`,
                 source: 'metaapi',
                 accountId: accountId
