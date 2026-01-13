@@ -559,12 +559,16 @@ function parseHTMLTable(tableHtml: string): { headers: string[]; rows: ParsedRow
  */
 function normalizeMT5Headers(data: { headers: string[]; rows: ParsedRow[] }): { headers: string[]; rows: ParsedRow[] } {
     // MT5 column mapping to standardized names
+    // IMPORTANT: In MT5 Deals table:
+    // - 'Type' column contains buy/sell (the actual trade direction)
+    // - 'Direction' column contains in/out (entry/exit markers, not trade direction!)
     const headerMap: Record<string, string> = {
         'Symbol': 'Symbol',
-        'Type': 'Direction',           // buy/sell -> Long/Short
+        'Type': 'Direction',            // buy/sell -> Long/Short (this is the actual direction!)
+        'Direction': 'EntryType',       // in/out -> entry/exit markers (NOT trade direction!)
         'Volume': 'Lots',
         'Price': 'Entry',
-        'Price_1': 'Exit',             // Second Price column is exit price
+        'Price_1': 'Exit',              // Second Price column is exit price
         'Profit': 'PnL',
         'Time': 'Date',
         'Time_1': 'CloseTime',
@@ -578,7 +582,6 @@ function normalizeMT5Headers(data: { headers: string[]; rows: ParsedRow[] }): { 
         'Commission': 'Commission',
         'Swap': 'Swap',
         'Comment': 'Notes',
-        'Direction': 'Direction',      // In Deals table
     };
 
     // Create new headers with normalized names
