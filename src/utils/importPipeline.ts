@@ -34,7 +34,9 @@ export interface ParsedRow {
 
 // ============= COLUMN DETECTION =============
 
-const COLUMN_PATTERNS: Record<keyof Trade, RegExp[]> = {
+// Column patterns for import field detection
+// This includes aliases and import-specific fields that get mapped to Trade properties
+const COLUMN_PATTERNS: Partial<Record<keyof Trade | 'symbol' | 'time' | 'size' | 'emotion' | 'stopLoss' | 'takeProfit' | 'timestamp', RegExp[]>> = {
     id: [/^id$/i, /^trade.?id$/i, /^ticket$/i, /^order$/i, /^position$/i, /^deal$/i],
     pair: [/^pair$/i, /^symbol$/i, /^instrument$/i, /^market$/i, /^currency$/i],
     symbol: [/^symbol$/i, /^pair$/i, /^instrument$/i], // Alias for pair
@@ -272,8 +274,8 @@ export function convertToTrades(
 
     // Convert each row
     rows.forEach((row, rowIndex) => {
-        const getValue = (field: keyof Trade): string => {
-            const sourceCol = mappingLookup.get(field);
+        const getValue = (field: keyof Trade | string): string => {
+            const sourceCol = mappingLookup.get(field as keyof Trade);
             return sourceCol ? row[sourceCol] || '' : '';
         };
 
@@ -311,7 +313,7 @@ export function convertToTrades(
         const exit = parseNumber(getValue('exit'));
         const lots = parseNumber(getValue('lots')) || 0.01;
         const date = parseDate(getValue('date')) || new Date().toISOString().split('T')[0];
-        const time = getValue('time') || '09:00';
+        const timeStr = getValue('time') || '09:00';
 
         // Skip zero PnL trades where entry === exit (these are likely pending/cancelled orders or balance ops)
         // Real breakeven trades typically have slight difference between entry/exit due to spread
@@ -330,13 +332,12 @@ export function convertToTrades(
             pnl,
             lots,
             date,
-            time,
-            ts: new Date(`${date}T${time}`).getTime() || Date.now(),
+            ts: new Date(`${date}T${timeStr}`).getTime() || Date.now(),
             setup: getValue('setup') || 'Imported',
-            emotion: getValue('emotion') || 'Neutral',
+            mood: (getValue('mood') || undefined) as Trade['mood'],
             notes: getValue('notes') || '',
-            stopLoss: getValue('stopLoss') || undefined,
-            takeProfit: getValue('takeProfit') || undefined,
+            sl: parseNumber(getValue('sl')) || undefined,
+            tp: parseNumber(getValue('tp')) || undefined,
         };
 
         trades.push(trade);
