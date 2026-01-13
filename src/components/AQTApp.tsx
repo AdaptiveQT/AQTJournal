@@ -729,23 +729,45 @@ const EnhancedTradeHeatmap = React.memo<{ trades: Trade[] }>(({ trades }) => {
 });
 
 const SetupPerformanceAnalysis = React.memo<{ trades: Trade[] }>(({ trades }) => {
+  // Calculate enhanced stats per setup including expectancy
   const setupGroups = trades.reduce((acc, trade) => {
     const s = trade.setup || "Unspecified";
-    if (!acc[s]) acc[s] = { count: 0, wins: 0, pnl: 0 };
+    if (!acc[s]) acc[s] = { count: 0, wins: 0, losses: 0, pnl: 0, totalWinPnl: 0, totalLossPnl: 0 };
     acc[s].count++;
     acc[s].pnl += trade.pnl;
-    if (trade.pnl > 0) acc[s].wins++;
+    if (trade.pnl > 0) {
+      acc[s].wins++;
+      acc[s].totalWinPnl += trade.pnl;
+    } else {
+      acc[s].losses++;
+      acc[s].totalLossPnl += Math.abs(trade.pnl);
+    }
     return acc;
-  }, {} as Record<string, { count: number; wins: number; pnl: number }>);
+  }, {} as Record<string, { count: number; wins: number; losses: number; pnl: number; totalWinPnl: number; totalLossPnl: number }>);
 
   const data = Object.entries(setupGroups)
-    .map(([name, stats]) => ({
-      name,
-      winRate: (stats.wins / stats.count) * 100,
-      avgPnl: stats.pnl / stats.count,
-      ...stats
-    }))
-    .sort((a, b) => b.pnl - a.pnl);
+    .map(([name, stats]) => {
+      const winRate = stats.count > 0 ? (stats.wins / stats.count) * 100 : 0;
+      const avgWin = stats.wins > 0 ? stats.totalWinPnl / stats.wins : 0;
+      const avgLoss = stats.losses > 0 ? stats.totalLossPnl / stats.losses : 0;
+      // Expectancy = (Win% × Avg Win) - (Loss% × Avg Loss)
+      const expectancy = ((winRate / 100) * avgWin) - ((1 - winRate / 100) * avgLoss);
+      // Capital Saved: if negative P&L, this is how much higher balance would be without these trades
+      const capitalSaved = stats.pnl < 0 ? Math.abs(stats.pnl) : 0;
+      return {
+        name,
+        winRate,
+        avgPnl: stats.pnl / stats.count,
+        expectancy,
+        capitalSaved,
+        ...stats
+      };
+    })
+    .sort((a, b) => b.expectancy - a.expectancy); // Sort by expectancy instead of total P&L
+
+  // Identify Golden Setup (highest expectancy) and Leaky Bucket (lowest expectancy)
+  const goldenSetup = data.length > 0 && data[0].expectancy > 0 ? data[0].name : null;
+  const leakyBucket = data.length > 0 && data[data.length - 1].expectancy < 0 ? data[data.length - 1].name : null;
 
   return (
     <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-white/10">
@@ -753,18 +775,42 @@ const SetupPerformanceAnalysis = React.memo<{ trades: Trade[] }>(({ trades }) =>
         <BarChart2 size={16} /> Setup Performance
       </h4>
       <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-        {data.length === 0 ? <div className="text-sm text-slate-500 text-center py-4">No data</div> : data.map(item => (
-          <div key={item.name} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-white/5 rounded border border-slate-100 dark:border-white/5">
-            <div>
-              <div className="font-bold text-sm text-slate-800 dark:text-white">{item.name}</div>
-              <div className="text-[10px] text-slate-500">{item.count} trades</div>
+        {data.length === 0 ? <div className="text-sm text-slate-500 text-center py-4">No data</div> : data.map(item => {
+          const isGolden = item.name === goldenSetup;
+          const isLeaky = item.name === leakyBucket;
+          return (
+            <div
+              key={item.name}
+              className={`flex items-center justify-between p-2 rounded border transition-all ${isGolden
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 ring-2 ring-emerald-500/50'
+                  : isLeaky
+                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-300 dark:border-rose-700 ring-2 ring-rose-500/50'
+                    : 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5'
+                }`}
+            >
+              <div>
+                <div className="font-bold text-sm text-slate-800 dark:text-white flex items-center gap-1.5">
+                  {isGolden && <span title="Golden Setup - Highest Expectancy">⭐</span>}
+                  {isLeaky && <span title="Leaky Bucket - Consider Removing">🩸</span>}
+                  {item.name}
+                </div>
+                <div className="text-[10px] text-slate-500">{item.count} trades • {item.winRate.toFixed(0)}% WR</div>
+                {isGolden && <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">Focus Here!</div>}
+                {isLeaky && item.capitalSaved > 0 && (
+                  <div className="text-[10px] text-rose-600 dark:text-rose-400 font-bold mt-0.5" title={`Your account would be $${item.capitalSaved.toFixed(2)} higher if you skipped these trades`}>
+                    Capital Saved: ${item.capitalSaved.toFixed(0)}
+                  </div>
+                )}
+              </div>
+              <div className="text-right">
+                <div className={`text-sm font-bold ${item.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>${item.pnl.toFixed(0)}</div>
+                <div className={`text-[10px] font-mono ${item.expectancy >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  E[${item.expectancy.toFixed(2)}]
+                </div>
+              </div>
             </div>
-            <div className="text-right">
-              <div className={`text-sm font-bold ${item.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>{item.pnl.toFixed(0)}</div>
-              <div className="text-[10px] text-slate-500">{item.winRate.toFixed(0)}% WR</div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
