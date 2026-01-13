@@ -591,13 +591,16 @@ function normalizeMT5Headers(data: { headers: string[]; rows: ParsedRow[] }): { 
             let value = row[oldHeader] || '';
 
             // Transform direction values
+            // Note: In MT5 Deals table, 'in'/'out' indicate entry/exit, NOT buy/sell direction
+            // Only 'buy' and 'sell' should be mapped to Long/Short
             if (newHeader === 'Direction') {
                 const lower = value.toLowerCase();
-                if (lower === 'buy' || lower === 'in') {
+                if (lower === 'buy') {
                     value = 'Long';
-                } else if (lower === 'sell' || lower === 'out') {
+                } else if (lower === 'sell') {
                     value = 'Short';
                 }
+                // 'in'/'out' are ignored here - they indicate entry/exit, not direction
             }
 
             newRow[newHeader] = value;
