@@ -131,7 +131,7 @@ import {
   GoogleAuthProvider,
   TwitterAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
+  signInWithRedirect, // Keep import but don't use - has session storage issues
 } from "firebase/auth";
 import {
   getFirestore,
@@ -2350,15 +2350,13 @@ const AQTApp: React.FC = () => {
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (err: any) {
-      if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
-        try {
-          await signInWithRedirect(auth, googleProvider);
-        } catch (redirectErr: any) {
-          if (typeof window !== "undefined") {
-            alert(`Google sign-in failed: ${redirectErr?.code || redirectErr?.message || redirectErr}`);
-          }
-          console.error("Redirect sign-in error:", redirectErr);
+      // Don't fall back to redirect - it has session storage issues in privacy browsers
+      if (err?.code === "auth/popup-blocked") {
+        if (typeof window !== "undefined") {
+          alert("Popup blocked! Please allow popups for this site and try again.");
         }
+      } else if (err?.code === "auth/popup-closed-by-user") {
+        // User closed popup, no action needed
       } else {
         if (typeof window !== "undefined") {
           alert(`Google sign-in failed: ${err?.code || err?.message || err}`);
@@ -2377,15 +2375,13 @@ const AQTApp: React.FC = () => {
     try {
       await signInWithPopup(auth, twitterProvider);
     } catch (err: any) {
-      if (err?.code === "auth/popup-blocked" || err?.code === "auth/popup-closed-by-user") {
-        try {
-          await signInWithRedirect(auth, twitterProvider);
-        } catch (redirectErr: any) {
-          if (typeof window !== "undefined") {
-            alert(`Twitter sign-in failed: ${redirectErr?.code || redirectErr?.message || redirectErr}`);
-          }
-          console.error("Redirect sign-in error:", redirectErr);
+      // Don't fall back to redirect - it has session storage issues in privacy browsers
+      if (err?.code === "auth/popup-blocked") {
+        if (typeof window !== "undefined") {
+          alert("Popup blocked! Please allow popups for this site and try again.");
         }
+      } else if (err?.code === "auth/popup-closed-by-user") {
+        // User closed popup, no action needed
       } else {
         if (typeof window !== "undefined") {
           alert(`Twitter sign-in failed: ${err?.code || err?.message || err}`);

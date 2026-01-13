@@ -150,7 +150,7 @@ import {
   TwitterAuthProvider,
   FacebookAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
+  signInWithRedirect, // Keep import but don't use - has session storage issues
   linkWithPopup,
 } from "firebase/auth";
 import {
@@ -2754,16 +2754,12 @@ const RetailBeastApp: React.FC = () => {
             alert(`Google sign-in failed: ${signInError?.code || signInError?.message || signInErr}`);
           }
         }
-      } else if (error?.code === "auth/popup-blocked" || error?.code === "auth/popup-closed-by-user") {
-        try {
-          await signInWithRedirect(auth, googleProvider);
-        } catch (redirectErr: unknown) {
-          const redirectError = redirectErr as { code?: string; message?: string };
-          if (typeof window !== "undefined") {
-            alert(`Google sign-in failed: ${redirectError?.code || redirectError?.message || redirectErr}`);
-          }
-          console.error("Redirect sign-in error:", redirectErr);
+      } else if (error?.code === "auth/popup-blocked") {
+        if (typeof window !== "undefined") {
+          alert("Popup blocked! Please allow popups for this site and try again.");
         }
+      } else if (error?.code === "auth/popup-closed-by-user") {
+        // User closed popup, no action needed
       } else {
         if (typeof window !== "undefined") {
           // Specific guidance for domain error
@@ -2828,16 +2824,12 @@ const RetailBeastApp: React.FC = () => {
             alert(`Twitter sign-in failed: ${signInError?.code || signInError?.message || signInErr}`);
           }
         }
-      } else if (error?.code === "auth/popup-blocked" || error?.code === "auth/popup-closed-by-user") {
-        try {
-          await signInWithRedirect(auth, twitterProvider);
-        } catch (redirectErr: unknown) {
-          const redirectError = redirectErr as { code?: string; message?: string };
-          if (typeof window !== "undefined") {
-            alert(`Twitter sign-in failed: ${redirectError?.code || redirectError?.message || redirectErr}`);
-          }
-          console.error("Redirect sign-in error:", redirectErr);
+      } else if (error?.code === "auth/popup-blocked") {
+        if (typeof window !== "undefined") {
+          alert("Popup blocked! Please allow popups for this site and try again.");
         }
+      } else if (error?.code === "auth/popup-closed-by-user") {
+        // User closed popup, no action needed
       } else {
         if (typeof window !== "undefined") {
           alert(`Twitter sign-in failed: ${error?.code || error?.message || err}`);
