@@ -2083,6 +2083,24 @@ const AQTApp: React.FC = () => {
     }
   }, [trades, user]);
 
+  // Save Settings to localStorage (Offline Fallback)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const settingsToSave = {
+      balance,
+      broker,
+      leverage,
+      safeMode,
+      darkMode,
+      globalSettings
+    };
+    try {
+      localStorage.setItem('aqt_settings', JSON.stringify(settingsToSave));
+    } catch (e) {
+      console.warn('[AQT] Failed to save settings to localStorage:', e);
+    }
+  }, [balance, broker, leverage, safeMode, darkMode, globalSettings]);
+
   // Sync Settings from Firebase (Read)
   useEffect(() => {
     // First, try to load from localStorage as fallback
