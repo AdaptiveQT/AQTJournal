@@ -782,10 +782,10 @@ const SetupPerformanceAnalysis = React.memo<{ trades: Trade[] }>(({ trades }) =>
             <div
               key={item.name}
               className={`flex items-center justify-between p-2 rounded border transition-all ${isGolden
-                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 ring-2 ring-emerald-500/50'
-                  : isLeaky
-                    ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-300 dark:border-rose-700 ring-2 ring-rose-500/50'
-                    : 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5'
+                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300 dark:border-emerald-700 ring-2 ring-emerald-500/50'
+                : isLeaky
+                  ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-300 dark:border-rose-700 ring-2 ring-rose-500/50'
+                  : 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5'
                 }`}
             >
               <div>
@@ -2053,6 +2053,35 @@ const AQTApp: React.FC = () => {
     });
     return () => unsubscribe();
   }, [user]);
+
+  // Load Trades from localStorage for offline/unauthenticated users
+  useEffect(() => {
+    if (user) return; // Firebase sync handles authenticated users
+    if (typeof window === 'undefined') return;
+    try {
+      const savedTrades = localStorage.getItem('aqt_offline_trades');
+      if (savedTrades) {
+        const parsed = JSON.parse(savedTrades) as Trade[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTrades(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn('[AQT] Failed to load trades from localStorage:', e);
+    }
+  }, [user]);
+
+  // Save Trades to localStorage for offline mode
+  useEffect(() => {
+    if (user) return; // Firebase sync handles authenticated users
+    if (typeof window === 'undefined') return;
+    if (trades.length === 0) return; // Don't save empty array on initial load
+    try {
+      localStorage.setItem('aqt_offline_trades', JSON.stringify(trades));
+    } catch (e) {
+      console.warn('[AQT] Failed to save trades to localStorage:', e);
+    }
+  }, [trades, user]);
 
   // Sync Settings from Firebase (Read)
   useEffect(() => {
