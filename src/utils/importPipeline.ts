@@ -609,10 +609,28 @@ function normalizeMT5Headers(data: { headers: string[]; rows: ParsedRow[] }): { 
                 // 'in'/'out' alone without buy/sell are entry/exit markers - skip these rows
             }
 
+            // Split MT5 'Time' (mapped to 'Date') into Date and Time fields
+            // MT5 Time format: "2024.01.15 14:30:25"
+            // If the value has a space, it likely contains both date and time
+            if (newHeader === 'Date' && value.includes(' ')) {
+                const parts = value.split(' ');
+                // Parts[0] is date ("2024.01.15"), Parts[1] is time ("14:30:25")
+                // Keep the date part in place for the 'Date' field
+                newRow['Date'] = parts[0];
+                // Add explicit Time field which convertToTrades will use
+                newRow['Time'] = parts[1];
+                return; // Skip default assignment since we handled it
+            }
+
             newRow[newHeader] = value;
         });
         return newRow;
     });
+
+    // Add 'Time' to headers if not present (since we added it to rows)
+    if (!newHeaders.includes('Time')) {
+        newHeaders.push('Time');
+    }
 
     return { headers: newHeaders, rows: newRows };
 }
