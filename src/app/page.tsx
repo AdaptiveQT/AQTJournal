@@ -1,7 +1,5 @@
-// src/app/page.tsx
-import RetailBeastApp from "@/components/RetailBeastApp";
+import LandingPage from "@/components/LandingPage";
 
 export default function Page() {
-    return <RetailBeastApp />;
+    return <LandingPage />;
 }
-
