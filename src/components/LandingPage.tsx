@@ -361,29 +361,37 @@ export default function LandingPage() {
                 </div>
             </section>
 
-            {/* Journal Section */}
+            {/* Backtested Performance Section */}
             <section className="py-20 bg-[#0d121c]">
                 <div className="container mx-auto px-6 max-w-6xl">
                     <div className="text-center mb-16">
                         <h2 className="text-4xl font-bold text-white mb-4">
-                            The Journal <span className="text-[#00ff9d]">Enforces Accountability</span>
+                            Backtested <span className="text-[#00ff9d]">Performance Data</span>
                         </h2>
-                        <p className="text-gray-400">
-                            Every trade logged. Every pattern revealed. No selective memory allowed.
-                        </p>
+                        <p className="text-gray-400">TradingView Strategy Tester results over 10,000+ historical bars. These are backtested metrics, not live trading results.</p>
                     </div>
 
                     <div className="bg-[#111827] rounded-2xl p-8 border border-gray-800">
+                        {/* Strategy Tester Screenshot */}
+                        <div className="mb-6">
+                            <div className="flex items-center justify-between mb-2">
+                                <h3 className="text-xl font-bold text-white">TradingView Strategy Tester Results</h3>
+                                <span className="px-3 py-1 bg-yellow-500/10 text-yellow-500 text-xs font-bold rounded-full border border-yellow-500/30">BACKTESTED DATA</span>
+                            </div>
+                            <p className="text-gray-400 text-sm">Historical simulation on EURUSD • 15-minute timeframe • 2020-2024</p>
+                        </div>
+
                         <img
                             src="/screenshots/journal-analytics.png"
-                            alt="Professional Trading Journal Analytics"
+                            alt="TradingView Strategy Tester Backtest Results"
                             className="rounded-lg border border-gray-700 w-full mb-8"
                         />
 
+                        {/* Key Metrics */}
                         <div className="grid md:grid-cols-3 gap-8 text-center mb-8">
                             <div>
                                 <p className="text-5xl font-bold text-[#00ff9d] mb-2">56.2%</p>
-                                <p className="text-gray-400 text-sm uppercase tracking-wide">Win Rate</p>
+                                <p className="text-gray-400 text-sm uppercase tracking-wide">Win Rate (Backtest)</p>
                             </div>
                             <div>
                                 <p className="text-5xl font-bold text-[#00ff9d] mb-2">2.1:1</p>
@@ -395,13 +403,43 @@ export default function LandingPage() {
                             </div>
                         </div>
 
+                        {/* Important Disclaimer */}
+                        <div className="bg-yellow-500/5 border border-yellow-500/20 p-6 rounded-xl mb-6">
+                            <div className="flex items-start gap-3">
+                                <span className="text-yellow-500 text-2xl">⚠️</span>
+                                <div>
+                                    <p className="text-yellow-500 font-bold mb-2 text-sm">IMPORTANT: Backtested Results Disclaimer</p>
+                                    <p className="text-gray-400 text-sm leading-relaxed">
+                                        These results are from TradingView&apos;s Strategy Tester using historical data. <strong className="text-white">Past performance does not guarantee future results.</strong> Backtesting has inherent limitations including hindsight bias, curve-fitting risk, and market condition changes. Your live trading results will vary based on execution, slippage, spreads, and market conditions.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* What This Means */}
                         <div className="bg-black/30 p-6 rounded-xl border border-gray-800">
-                            <p className="text-white font-bold mb-2">Statistical Edge Breakdown:</p>
-                            <p className="text-gray-400 text-sm mb-3">56% win rate with 2.1:1 average R:R = 1.87 profit factor</p>
+                            <p className="text-white font-bold mb-3">What These Numbers Actually Mean:</p>
+                            <p className="text-gray-400 text-sm mb-3">
+                                <strong className="text-[#00ff9d]">56% win rate with 2.1:1 R:R = 1.87 profit factor</strong>
+                            </p>
+                            <p className="text-gray-400 text-sm mb-4">
+                                Translation: In backtesting, for every $100 risked across 100 trades, the system would have made $187 profit. This demonstrates the <em>theoretical edge</em> of the confluence-based methodology.
+                            </p>
                             <p className="text-gray-400 text-sm">
-                                <strong className="text-[#00ff9d]">Translation:</strong> For every $100 risked across 100 trades, you make $187. This is a measurable, repeatable edge—if you follow the system.
+                                <strong className="text-white">Track YOUR actual results:</strong> The journal logs every live trade with full transparency—wins, losses, and everything in between. Real performance beats backtested promises.
                             </p>
                         </div>
+                    </div>
+
+                    {/* Journal Callout */}
+                    <div className="mt-12 text-center p-8 bg-[#111827] rounded-2xl border border-gray-800">
+                        <h3 className="text-2xl font-bold text-white mb-4">Your Real Results Matter More</h3>
+                        <p className="text-gray-400 mb-6 max-w-2xl mx-auto">
+                            Backtests show what <em>could have</em> happened. The journal shows what <em>actually</em> happens when you trade live. Log every trade. Measure your real edge. No selective memory allowed.
+                        </p>
+                        <Link href="/journal" className="inline-block bg-[#00ff9d] text-black px-8 py-4 rounded-xl font-bold hover:bg-[#00cc7a] transition-all shadow-[0_0_20px_rgba(0,255,157,0.2)]">
+                            Start Journaling Free →
+                        </Link>
                     </div>
                 </div>
             </section>
