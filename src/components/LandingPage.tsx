@@ -34,7 +34,7 @@ export default function LandingPage() {
                 <div className="container mx-auto max-w-4xl text-center relative z-10">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#00ff9d]/10 border border-[#00ff9d]/20 text-[#00ff9d] text-xs font-bold mb-8 animate-fade-in-up">
                         <span className="w-2 h-2 rounded-full bg-[#00ff9d] animate-pulse"></span>
-                        v9.0 PROTOCOL • FULLY DOCUMENTED
+                        v9.5 ULTIMATE • STRATEGY TESTER INCLUDED
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight mb-6 leading-tight animate-fade-in-up delay-100">
@@ -45,43 +45,13 @@ export default function LandingPage() {
                     </h1>
 
                     <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed animate-fade-in-up delay-200">
-                        Professional-grade indicator + mechanical journal.<br />
-                        <strong className="text-white">Built for traders who trade, not gamble.</strong>
+                        Professional trend-following, ORB breakouts, and supply/demand zones.<br />
+                        Now with <strong>Big Alerts</strong> and a full <strong>Strategy Tester</strong>. Open source. Forever free.
                     </p>
-
-                    <div className="bg-[#111827]/80 backdrop-blur-sm rounded-2xl p-8 mb-10 max-w-3xl mx-auto border border-gray-800 animate-fade-in-up delay-300">
-                        <h3 className="text-white font-bold mb-6 text-sm uppercase tracking-wider text-opacity-70">What You Get</h3>
-
-                        <div className="grid md:grid-cols-2 gap-8 text-left">
-                            <div>
-                                <h4 className="text-[#00ff9d] font-bold mb-4 flex items-center gap-2 text-lg">
-                                    <span>📊</span> The Indicator
-                                </h4>
-                                <ul className="text-sm text-gray-400 space-y-3">
-                                    <li className="flex items-center gap-2"><span className="text-[#00ff9d]">✓</span> ICT Opening Range Breakouts</li>
-                                    <li className="flex items-center gap-2"><span className="text-[#00ff9d]">✓</span> EMA 9/30 Trend Filter</li>
-                                    <li className="flex items-center gap-2"><span className="text-[#00ff9d]">✓</span> Supply/Demand Zones</li>
-                                    <li className="flex items-center gap-2"><span className="text-[#00ff9d]">✓</span> Consolidation Blocker</li>
-                                </ul>
-                            </div>
-
-                            <div className="md:border-l md:border-gray-800 md:pl-8">
-                                <h4 className="text-[#fbbf24] font-bold mb-4 flex items-center gap-2 text-lg">
-                                    <span>📓</span> The Journal
-                                </h4>
-                                <ul className="text-sm text-gray-400 space-y-3">
-                                    <li className="flex items-center gap-2"><span className="text-[#fbbf24]">✓</span> Track Every Setup</li>
-                                    <li className="flex items-center gap-2"><span className="text-[#fbbf24]">✓</span> Win Rate Analytics</li>
-                                    <li className="flex items-center gap-2"><span className="text-[#fbbf24]">✓</span> R:R Tracking - Measure Edge</li>
-                                    <li className="flex items-center gap-2"><span className="text-[#fbbf24]">✓</span> Violation Logging</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
 
                     <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 animate-fade-in-up delay-400">
                         <Link href="/get-started" className="bg-[#00ff9d] text-black px-8 py-4 rounded-xl font-bold text-lg hover:bg-[#00cc7a] transition-all shadow-[0_0_30px_rgba(0,255,157,0.3)] hover:shadow-[0_0_40px_rgba(0,255,157,0.5)] flex items-center justify-center gap-2">
-                            Get Started Free <span className="text-xl">→</span>
+                            Download Protocol v9.5 <span className="text-xl">→</span>
                         </Link>
                         <a href="#features" className="px-8 py-4 rounded-xl font-bold text-lg border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500 transition-all bg-[#111827]/50">
                             Explore Features
@@ -112,10 +82,10 @@ export default function LandingPage() {
                         </div>
 
                         <div className="bg-[#111827] p-8 rounded-2xl border border-gray-800 hover:border-[#00ff9d]/30 transition-all shadow-lg hover:shadow-[#00ff9d]/5 group">
-                            <div className="w-14 h-14 rounded-2xl bg-[#00ff9d]/10 border border-[#00ff9d]/20 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">📚</div>
-                            <h3 className="text-white text-xl font-bold mb-3">Extensively Documented</h3>
+                            <div className="w-14 h-14 rounded-2xl bg-[#00ff9d]/10 border border-[#00ff9d]/20 flex items-center justify-center mb-6 text-2xl group-hover:scale-110 transition-transform">📉</div>
+                            <h3 className="text-white text-xl font-bold mb-3">Strategy Tester</h3>
                             <p className="text-gray-400 text-sm leading-relaxed">
-                                27-page technical breakdown. Quick-start guide. Strategy documentation. Learn the WHY, not just the WHAT.
+                                Backtest the logic on any asset. Verify win rates, profit factors, and optimized settings before trading with real money.
                             </p>
                         </div>
 
@@ -243,7 +213,7 @@ export default function LandingPage() {
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <span className="text-[#00ff9d] font-bold">✓</span>
-                                    <span className="text-gray-300 text-sm">Complete documentation (27 pages)</span>
+                                    <span className="text-gray-300 text-sm">Strategy Tester & Ultimate Guide</span>
                                 </li>
                                 <li className="flex items-start gap-3">
                                     <span className="text-[#00ff9d] font-bold">✓</span>

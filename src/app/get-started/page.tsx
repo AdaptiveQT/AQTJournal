@@ -42,27 +42,27 @@ export default function GetStartedPage() {
 
                         <h2 className="text-2xl font-bold text-white mt-4 mb-4">Download Categories</h2>
                         <p className="text-gray-400 text-sm mb-6">
-                            Get the full Pine Script source code, 27-page technical breakdown, and strategy guide.
+                            Get the full source code, strategy tester, and the Ultimate Guide.
                         </p>
 
                         <div className="bg-[#0a0f18] rounded-xl p-4 mb-6 border border-gray-800/50">
                             <ul className="space-y-2 text-sm text-gray-400">
-                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00ff9d]" /> RetailBeastFX_Protocol.pine</li>
-                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00ff9d]" /> Technical_Breakdown.md</li>
-                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00ff9d]" /> Quick_Start_Guide.md</li>
-                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00ff9d]" /> Strategy_Documentation.md</li>
+                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00ff9d]" /> Protocol_v9.5_Big_Alerts.pine</li>
+                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00ff9d]" /> Strategy_Tester_v9.5.pine</li>
+                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00ff9d]" /> The_Ultimate_Guide.md</li>
+                                <li className="flex items-center gap-2"><CheckCircle size={14} className="text-[#00ff9d]" /> Strategy_Tester_Guide.md</li>
                             </ul>
                         </div>
 
                         <a
-                            href="/downloads/RetailBeastFX_Protocol_v9.zip"
+                            href="/downloads/RetailBeastFX_Protocol_v9.5.zip"
                             download
                             className="w-full bg-[#00ff9d] text-black py-4 rounded-xl font-bold text-lg hover:bg-[#00cc7a] transition-all shadow-[0_0_20px_rgba(0,255,157,0.2)] flex items-center justify-center gap-2"
                         >
                             <Download size={20} />
-                            Download Protocol v9.0
+                            Download Protocol v9.5
                         </a>
-                        <p className="text-xs text-gray-500 text-center mt-3">254 KB • Zip Archive</p>
+                        <p className="text-xs text-gray-500 text-center mt-3">~300 KB • Zip Archive</p>
                     </div>
 
                     {/* Step 2: Journal */}

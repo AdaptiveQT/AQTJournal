@@ -1,0 +1,403 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © RetailBeastFX Protocol - STRATEGY TESTER [ULTIMATE EDITION]
+
+//@version=5
+strategy("RetailBeastFX Strategy [ULTIMATE]", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=100, commission_type=strategy.commission.percent, commission_value=0.05, slippage=2)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ SYSTEM MODE ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpMode = "System Mode"
+string mode = input.string("Standard", "Configuration Mode", options=["Standard", "Optimized", "Custom"], group=grpMode, 
+ tooltip="Standard: Original Logic (Safe, Trend-Following)\nOptimized: Enhanced Logic (Aggressive, Reversals, Tighter Risk)\nCustom: Use manual settings below")
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ BACKTEST PERIOD ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpBacktest = "Backtest Period"
+bool useBacktestPeriod = input.bool(true, "Use Date Range", group=grpBacktest)
+int startYear = input.int(2023, "Start Year", minval=2020, group=grpBacktest)
+int startMonth = input.int(1, "Start Month", minval=1, maxval=12, group=grpBacktest)
+int startDay = input.int(1, "Start Day", minval=1, maxval=31, group=grpBacktest)
+int endYear = input.int(2025, "End Year", minval=2020, group=grpBacktest)
+int endMonth = input.int(12, "End Month", minval=1, maxval=12, group=grpBacktest)
+int endDay = input.int(31, "End Day", minval=1, maxval=31, group=grpBacktest)
+
+int startTime = timestamp(startYear, startMonth, startDay, 0, 0)
+int endTime = timestamp(endYear, endMonth, endDay, 23, 59)
+bool inBacktestPeriod = useBacktestPeriod ? (time >= startTime and time <= endTime) : true
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ CORE SETTINGS ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpCore = "Core Trend System"
+string maType = input.string("EMA", "MA Type", options=["EMA", "SMA", "WMA", "VWMA"], group=grpCore)
+int fastLen = input.int(9, "Fast MA Length", minval=1, group=grpCore)
+int slowLen = input.int(30, "Slow MA Length", minval=1, group=grpCore)
+int rsiLen = input.int(14, "RSI Length", minval=2, group=grpCore)
+int rsiOB = input.int(70, "RSI Overbought", minval=50, maxval=100, group=grpCore)
+int rsiOS = input.int(25, "RSI Oversold", minval=0, maxval=50, group=grpCore)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ CONSOLIDATION DETECTION ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpChop = "Consolidation Filter"
+float consolEMAPct = input.float(0.4, "EMA Distance Threshold %", minval=0.1, step=0.1, group=grpChop)
+float consolMaxMovePct = input.float(0.6, "Max Range Move %", minval=0.1, step=0.1, group=grpChop)
+int rangeBarCount = input.int(20, "Range Lookback Bars", minval=5, group=grpChop)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ OPENING RANGE BREAKOUT (ORB) ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpORB = "Opening Range Breakout"
+bool orbEnabled = input.bool(true, "Enable ORB System", group=grpORB)
+string orbSession = input.session("0930-0945", "ORB Session (NY Time)", group=grpORB)
+string tradingSession = input.session("0930-1600", "Trading Session", group=grpORB)
+int orbHoldBars = input.int(15, "ORB Momentum Bars", minval=1, group=grpORB)
+bool _blockCounterTrend = input.bool(true, "Block Counter-Trend During ORB", group=grpORB)
+bool finalBlockCT = mode == "Standard" ? true : mode == "Optimized" ? false : _blockCounterTrend
+float orbRetestTol = input.float(30.0, "Retest Tolerance %", minval=1.0, step=0.5, group=grpORB)
+int maxBarsRetest = input.int(25, "Max Bars for Retest", minval=5, group=grpORB)
+int maxBarsFakeout = input.int(15, "Max Bars for Fakeout Detection", minval=1, group=grpORB)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ SESSION FILTER ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpSession = "Session Filter"
+bool _useSessionFilter = input.bool(true, "Enforce Trading Session", group=grpSession)
+bool finalUseSession = mode == "Standard" ? true : mode == "Optimized" ? false : _useSessionFilter
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ VOLUME & MOMENTUM ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpMomentum = "Volume & Momentum"
+int volumePeriod = input.int(8, "Volume Average Period", minval=1, group=grpMomentum)
+float _momentumBodyMult = input.float(1.2, "Strong Candle Body Multiplier", minval=0.5, step=0.1, group=grpMomentum)
+float finalMomMult = mode == "Standard" ? 1.2 : mode == "Optimized" ? 1.1 : _momentumBodyMult
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ RISK MANAGEMENT ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpRisk = "Risk Management"
+float profitFactor = input.float(2.0, "Profit Target (R:R)", minval=0.5, step=0.5, group=grpRisk)
+float _stopFactor = input.float(1.0, "Stop Loss Factor", minval=0.5, step=0.1, group=grpRisk)
+float finalStopFact = mode == "Standard" ? 1.0 : mode == "Optimized" ? 0.8 : _stopFactor
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ REVERSAL SEQUENCING ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpReversal = "Reversal Sequencing"
+bool enableReversalSeq = input.bool(true, "Enable Reversal Sequencing", group=grpReversal)
+int reversalConfirmBars = input.int(3, "Bars for Confirmation", minval=1, group=grpReversal)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ SNAPBACK ALERTS ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpSnapback = "Snapback Alerts"
+bool enableSnapback = input.bool(true, "Enable Snapback Detection", group=grpSnapback)
+float snapbackVolMult = input.float(2.0, "Snapback Volume Multiplier", minval=1.0, step=0.5, group=grpSnapback)
+float snapbackRangePct = input.float(0.5, "Snapback Range %", minval=0.1, step=0.1, group=grpSnapback)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ STRATEGY FILTERS ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+grpFilters = "Strategy Filters"
+bool enableLongs = input.bool(true, "Enable Long Trades", group=grpFilters)
+bool enableShorts = input.bool(true, "Enable Short Trades", group=grpFilters)
+bool enableReversalTrades = input.bool(true, "Trade Reversal Signals", group=grpFilters)
+bool enableSnapbackTrades = input.bool(true, "Trade Snapback Signals", group=grpFilters)
+bool enableORBRetests = input.bool(true, "Trade ORB Retests", group=grpFilters)
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ CALCULATIONS ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+ma(src, len, type) =>
+    switch type
+        "EMA" => ta.ema(src, len)
+        "SMA" => ta.sma(src, len)
+        "WMA" => ta.wma(src, len)
+        "VWMA" => ta.vwma(src, len)
+        => ta.ema(src, len)
+
+float fastMA = ma(close, fastLen, maType)
+float slowMA = ma(close, slowLen, maType)
+float rsiVal = ta.rsi(close, rsiLen)
+
+bool fastUp = fastMA > fastMA[3]
+bool fastDn = fastMA < fastMA[3]
+bool slowUp = slowMA > slowMA[3]
+bool slowDn = slowMA < slowMA[3]
+
+bool bullAlign = fastMA > slowMA and fastUp and slowUp
+bool bearAlign = fastMA < slowMA and fastDn and slowDn
+
+float maDistPct = (math.abs(fastMA - slowMA) / close) * 100
+float rangeHi = ta.highest(high, rangeBarCount)
+float rangeLo = ta.lowest(low, rangeBarCount)
+float rangeMovePct = ((rangeHi - rangeLo) / rangeLo) * 100
+bool isChop = maDistPct < consolEMAPct or rangeMovePct < consolMaxMovePct
+
+bool pullbackLong = bullAlign and close < fastMA and close > slowMA
+bool pullbackShort = bearAlign and close > fastMA and close < slowMA
+
+float avgVol = ta.sma(volume, volumePeriod)
+bool volConfirm = volume > avgVol
+
+float bodySize = math.abs(close - open)
+float avgBody = ta.sma(bodySize, 3)
+bool strongBody = bodySize > avgBody * finalMomMult
+
+bool breakPrevHigh = close > high[1]
+bool breakPrevLow = close < low[1]
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ ORB LOGIC ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+bool inORB = not na(time(timeframe.period, orbSession, "America/New_York"))
+bool inSession = finalUseSession ? not na(time(timeframe.period, tradingSession, "America/New_York")) : true
+
+var float orbHigh = na
+var float orbLow = na
+var bool orbComplete = false
+var int orbBarStart = na
+var int orbDayKey = na
+
+if dayofweek != orbDayKey
+    orbHigh := na
+    orbLow := na
+    orbComplete := false
+    orbBarStart := na
+    orbDayKey := dayofweek
+
+if inORB and orbEnabled
+    orbHigh := na(orbHigh) ? high : math.max(orbHigh, high)
+    orbLow := na(orbLow) ? low : math.min(orbLow, low)
+    if na(orbBarStart)
+        orbBarStart := bar_index
+    if not na(orbHigh) and not na(orbLow)
+        orbComplete := true
+
+var int orbBreakDir = 0
+var int orbBreakBar = na
+
+bool crossAboveORBHigh = ta.crossover(close, orbHigh)
+bool crossBelowORBLow = ta.crossunder(close, orbLow)
+
+if orbComplete and not inORB and orbEnabled
+    if crossAboveORBHigh and orbBreakDir == 0
+        orbBreakDir := 1
+        orbBreakBar := bar_index
+    if crossBelowORBLow and orbBreakDir == 0
+        orbBreakDir := -1
+        orbBreakBar := bar_index
+
+if dayofweek != dayofweek[1]
+    orbBreakDir := 0
+    orbBreakBar := na
+
+int barsSinceBreak = na(orbBreakBar) ? 999 : bar_index - orbBreakBar
+bool inRetestWindow = barsSinceBreak <= maxBarsRetest
+
+float retestTolAmt = (orbHigh - orbLow) * (orbRetestTol / 100)
+
+bool orbRetestLong = orbBreakDir == 1 and inRetestWindow and low <= orbHigh + retestTolAmt and low >= orbHigh - retestTolAmt
+bool orbRetestShort = orbBreakDir == -1 and inRetestWindow and high >= orbLow - retestTolAmt and high <= orbLow + retestTolAmt
+
+var float orbMid = na
+if orbComplete
+    orbMid := math.avg(orbHigh, orbLow)
+
+bool inFakeoutWindow = barsSinceBreak <= maxBarsFakeout
+bool fakeoutLong = orbBreakDir == 1 and inFakeoutWindow and close < orbMid
+bool fakeoutShort = orbBreakDir == -1 and inFakeoutWindow and close > orbMid
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ REVERSAL SEQUENCING ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+var string reversalPhase = "NONE"
+var int reversalPhaseBar = na
+var int reversalDirection = 0
+
+if enableReversalSeq
+    bool structureBreakBull = bearAlign[1] and fastMA > slowMA and not bullAlign[1]
+    bool structureBreakBear = bullAlign[1] and fastMA < slowMA and not bearAlign[1]
+    
+    bool retestBull = reversalPhase == "STRUCTURE BROKEN" and reversalDirection == 1 and close < fastMA and close > slowMA
+    bool retestBear = reversalPhase == "STRUCTURE BROKEN" and reversalDirection == -1 and close > fastMA and close < slowMA
+    
+    bool earlyReversalBull = reversalPhase == "RETEST IN PROGRESS" and reversalDirection == 1 and close > fastMA
+    bool earlyReversalBear = reversalPhase == "RETEST IN PROGRESS" and reversalDirection == -1 and close < fastMA
+    
+    int barsInEarly = na(reversalPhaseBar) ? 0 : bar_index - reversalPhaseBar
+    bool confirmedBull = reversalPhase == "EARLY REVERSAL" and reversalDirection == 1 and barsInEarly >= reversalConfirmBars and close > fastMA
+    bool confirmedBear = reversalPhase == "EARLY REVERSAL" and reversalDirection == -1 and barsInEarly >= reversalConfirmBars and close < fastMA
+    
+    if structureBreakBull
+        reversalPhase := "STRUCTURE BROKEN"
+        reversalDirection := 1
+        reversalPhaseBar := bar_index
+    else if structureBreakBear
+        reversalPhase := "STRUCTURE BROKEN"
+        reversalDirection := -1
+        reversalPhaseBar := bar_index
+    else if retestBull or retestBear
+        reversalPhase := "RETEST IN PROGRESS"
+        reversalPhaseBar := bar_index
+    else if earlyReversalBull or earlyReversalBear
+        reversalPhase := "EARLY REVERSAL"
+        reversalPhaseBar := bar_index
+    else if confirmedBull or confirmedBear
+        reversalPhase := "REVERSAL CONFIRMED"
+        reversalPhaseBar := bar_index
+    
+    if bullAlign and reversalDirection == 1 and barsInEarly > 10
+        reversalPhase := "NONE"
+        reversalDirection := 0
+    if bearAlign and reversalDirection == -1 and barsInEarly > 10
+        reversalPhase := "NONE"
+        reversalDirection := 0
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ SNAPBACK DETECTION ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+var bool snapbackBull = false
+var bool snapbackBear = false
+
+if enableSnapback
+    float barRange = high - low
+    float avgRange = ta.sma(barRange, 10)
+    bool shockBar = barRange > avgRange * 1.5 and volume > avgVol * snapbackVolMult
+    
+    float priorHigh = ta.highest(high, 5)[1]
+    float priorLow = ta.lowest(low, 5)[1]
+    float priorRange = priorHigh - priorLow
+    float reclaimTarget = priorLow + (priorRange * snapbackRangePct)
+    
+    snapbackBull := shockBar[1] and close[1] < priorLow and close > reclaimTarget and volume > avgVol * snapbackVolMult
+    snapbackBear := shockBar[1] and close[1] > priorHigh and close < (priorHigh - (priorRange * snapbackRangePct)) and volume > avgVol * snapbackVolMult
+else
+    snapbackBull := false
+    snapbackBear := false
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ ENTRY SIGNALS ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+bool longBase = bullAlign and not isChop and close > fastMA and volConfirm and strongBody
+bool shortBase = bearAlign and not isChop and close < fastMA and volConfirm and strongBody
+
+bool longMomo = bullAlign and close > fastMA and strongBody and breakPrevHigh and not isChop
+bool shortMomo = bearAlign and close < fastMA and strongBody and breakPrevLow and not isChop
+
+bool longPullbackEntry = pullbackLong[1] and close > fastMA and not isChop
+bool shortPullbackEntry = pullbackShort[1] and close < fastMA and not isChop
+
+bool longRetestEntry = orbRetestLong and bullAlign and not isChop and enableORBRetests
+bool shortRetestEntry = orbRetestShort and bearAlign and not isChop and enableORBRetests
+
+bool longReversalEntry = reversalPhase == "REVERSAL CONFIRMED" and reversalDirection == 1 and reversalPhaseBar == bar_index and enableReversalTrades
+bool shortReversalEntry = reversalPhase == "REVERSAL CONFIRMED" and reversalDirection == -1 and reversalPhaseBar == bar_index and enableReversalTrades
+
+bool longSnapbackEntry = snapbackBull and enableSnapbackTrades
+bool shortSnapbackEntry = snapbackBear and enableSnapbackTrades
+
+bool longSignal = (longBase or longMomo or longPullbackEntry or longRetestEntry or longReversalEntry or longSnapbackEntry) and inSession and inBacktestPeriod and enableLongs
+bool shortSignal = (shortBase or shortMomo or shortPullbackEntry or shortRetestEntry or shortReversalEntry or shortSnapbackEntry) and inSession and inBacktestPeriod and enableShorts
+
+if finalBlockCT and orbEnabled and orbComplete and barsSinceBreak <= orbHoldBars
+    if orbBreakDir == 1
+        shortSignal := false
+    if orbBreakDir == -1
+        longSignal := false
+
+if isChop
+    longSignal := false
+    shortSignal := false
+
+longSignal := longSignal and not longSignal[1]
+shortSignal := shortSignal and not shortSignal[1]
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ STRATEGY EXECUTION ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+float atrVal = ta.atr(14)
+
+// Entry Logic
+if longSignal and strategy.position_size == 0
+    float stopPrice = close - atrVal * finalStopFact
+    float targetPrice = close + atrVal * profitFactor
+    strategy.entry("Long", strategy.long, comment="LONG")
+    strategy.exit("Exit Long", "Long", stop=stopPrice, limit=targetPrice, comment_loss="SL", comment_profit="TP")
+
+if shortSignal and strategy.position_size == 0
+    float stopPrice = close + atrVal * finalStopFact
+    float targetPrice = close - atrVal * profitFactor
+    strategy.entry("Short", strategy.short, comment="SHORT")
+    strategy.exit("Exit Short", "Short", stop=stopPrice, limit=targetPrice, comment_loss="SL", comment_profit="TP")
+
+// Position Flipping (if enabled in optimized mode)
+if longSignal and strategy.position_size < 0
+    strategy.close("Short", comment="Flip to Long")
+    float stopPrice = close - atrVal * finalStopFact
+    float targetPrice = close + atrVal * profitFactor
+    strategy.entry("Long", strategy.long, comment="LONG (Flip)")
+    strategy.exit("Exit Long", "Long", stop=stopPrice, limit=targetPrice, comment_loss="SL", comment_profit="TP")
+
+if shortSignal and strategy.position_size > 0
+    strategy.close("Long", comment="Flip to Short")
+    float stopPrice = close + atrVal * finalStopFact
+    float targetPrice = close - atrVal * profitFactor
+    strategy.entry("Short", strategy.short, comment="SHORT (Flip)")
+    strategy.exit("Exit Short", "Short", stop=stopPrice, limit=targetPrice, comment_loss="SL", comment_profit="TP")
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ░░░ VISUALIZATION ░░░
+// ══════════════════════════════════════════════════════════════════════════════
+
+plot(fastMA, "Fast MA", color=color.blue, linewidth=2)
+plot(slowMA, "Slow MA", color=color.orange, linewidth=2)
+
+color bgCol = isChop ? color.new(color.gray, 92) : bullAlign ? color.new(color.green, 94) : bearAlign ? color.new(color.red, 94) : color.new(color.gray, 96)
+bgcolor(bgCol, title="Trend Background")
+
+// Plot Entry Markers
+plotshape(longSignal, "Long Entry", shape.triangleup, location.belowbar, color.green, size=size.small)
+plotshape(shortSignal, "Short Entry", shape.triangledown, location.abovebar, color.red, size=size.small)
+
+// Plot Reversal Phase Markers
+plotshape(reversalPhase == "REVERSAL CONFIRMED" and reversalDirection == 1 and reversalPhaseBar == bar_index, "Reversal Bull", shape.circle, location.belowbar, color.yellow, size=size.tiny)
+plotshape(reversalPhase == "REVERSAL CONFIRMED" and reversalDirection == -1 and reversalPhaseBar == bar_index, "Reversal Bear", shape.circle, location.abovebar, color.yellow, size=size.tiny)
+
+// Plot Snapback Markers
+plotshape(snapbackBull, "Snapback Bull", shape.diamond, location.belowbar, color.aqua, size=size.tiny)
+plotshape(snapbackBear, "Snapback Bear", shape.diamond, location.abovebar, color.aqua, size=size.tiny)
+
+// Plot ORB Lines
+var line orbHighLine = na
+var line orbLowLine = na
+
+if orbComplete and not inORB and inORB[1] and orbEnabled
+    line.delete(orbHighLine)
+    line.delete(orbLowLine)
+    orbHighLine := line.new(bar_index, orbHigh, bar_index + 50, orbHigh, color=color.new(color.green, 40), style=line.style_dashed, width=2)
+    orbLowLine := line.new(bar_index, orbLow, bar_index + 50, orbLow, color=color.new(color.red, 40), style=line.style_dashed, width=2)
+
+if orbComplete and not na(orbHighLine)
+    line.set_x2(orbHighLine, bar_index + 1)
+    line.set_x2(orbLowLine, bar_index + 1)
